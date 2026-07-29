@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:            #15171C;
+    --surface:       #1C1F26;
+    --surface-raised:#232730;
+    --line:          #2E323C;
+    --line-stitch:   #3A3F4B;
+    --text:          #E9E7E2;
+    --text-muted:    #9497A1;
+    --text-faint:    #5C6070;
+    --brass:         #C9A227;
+    --brass-soft:    #C9A22722;
+    --good:          #5FA876;
+    --bad:           #CB6552;
+
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body:    'Inter', sans-serif;
+    --font-mono:    'IBM Plex Mono', monospace;
+
+    --radius: 6px;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:14px;
+    -webkit-font-smoothing:antialiased;
+  }
+  button, input, select, textarea{ font-family:inherit; font-size:inherit; color:inherit; }
+  ::selection{ background:var(--brass-soft); color:var(--text); }
+  *:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
+
+  .app{
+    display:grid;
+    grid-template-columns:236px 1fr;
+    min-height:100vh;
+  }
+
+  /* ===== Sidebar ===== */
+  .sidebar{
+    background:var(--surface);
+    border-right:1px dashed var(--line-stitch);
+    display:flex;
+    flex-direction:column;
+    padding:20px 14px;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; padding:6px 8px 22px; }
+  .brand__mark{ font-size:20px; color:var(--brass); }
+  .brand__text{ display:flex; flex-direction:column; line-height:1.25; }
+  .brand__title{ font-family:var(--font-display); font-weight:700; font-size:15px; letter-spacing:.2px; }
+  .brand__subtitle{ font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.6px; }
+
+  .nav{ display:flex; flex-direction:column; gap:2px; flex:1; }
+  .nav__item{
+    display:flex; align-items:center; gap:10px;
+    background:transparent; border:none;
+    text-align:left; padding:9px 10px; border-radius:var(--radius);
+    color:var(--text-muted); cursor:pointer;
+    transition:background .12s ease, color .12s ease;
+  }
+  .nav__item:hover{ background:var(--surface-raised); color:var(--text); }
+  .nav__item[data-current="true"]{ background:var(--brass-soft); color:var(--brass); }
+  .nav__num{ font-family:var(--font-mono); font-size:11px; color:var(--text-faint); width:18px; }
+  .nav__item[data-current="true"] .nav__num{ color:var(--brass); }
+  .nav__item[data-hidden="true"]{ display:none; }
+
+  .sidebar__foot{ padding-top:14px; border-top:1px dashed var(--line-stitch); }
+  .session{ display:flex; align-items:center; gap:9px; padding:6px; }
+  .session__dot{ width:7px; height:7px; border-radius:50%; background:var(--text-faint); flex-shrink:0; }
+  .session[data-ok="true"] .session__dot{ background:var(--good); }
+  .session[data-ok="false"] .session__dot{ background:var(--bad); }
+  .session__info{ display:flex; flex-direction:column; line-height:1.3; overflow:hidden; }
+  .session__name{ font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .session__role{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.4px; }
+
+  /* ===== Main ===== */
+  .main{ display:flex; flex-direction:column; min-width:0; }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 32px; border-bottom:1px dashed var(--line-stitch);
+  }
+  .topbar__title{ font-family:var(--font-display); font-size:20px; font-weight:600; margin:0; }
+  .topbar__actions{ display:flex; gap:8px; }
+
+  .view{ padding:28px 32px; overflow:auto; }
+
+  .toast{
+    position:fixed; top:20px; right:24px; z-index:50;
+    padding:11px 16px; border-radius:var(--radius);
+    font-size:13px; background:var(--surface-raised);
+    border:1px solid var(--line); box-shadow:0 6px 20px #00000055;
+    opacity:0; transform:translateY(-6px); pointer-events:none;
+    transition:opacity .18s ease, transform .18s ease;
+  }
+  .toast[data-show="true"]{ opacity:1; transform:translateY(0); }
+  .toast[data-type="ok"]{ border-color:var(--good); }
+  .toast[data-type="error"]{ border-color:var(--bad); }
+
+  /* ===== Componentes reusables ===== */
+  .card{
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:10px; padding:20px;
+  }
+  .card + .card{ margin-top:16px; }
+  .card__title{ font-family:var(--font-display); font-size:14px; font-weight:600; margin:0 0 4px; }
+  .card__hint{ color:var(--text-muted); font-size:12.5px; margin:0 0 16px; }
+
+  .grid-kpi{ display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:22px; }
+  .kpi{ background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+  .kpi__label{ font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-faint); }
+  .kpi__value{ font-family:var(--font-mono); font-size:24px; margin-top:6px; }
+
+  table{ width:100%; border-collapse:collapse; }
+  thead th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.4px;
+    color:var(--text-faint); font-weight:600; padding:8px 10px; border-bottom:1px dashed var(--line-stitch);
+  }
+  tbody td{ padding:10px 10px; border-bottom:1px solid var(--line); font-size:13px; }
+  tbody tr:hover{ background:var(--surface-raised); }
+  td.mono, .mono{ font-family:var(--font-mono); font-size:12.5px; }
+
+  .badge{
+    display:inline-flex; align-items:center; padding:3px 8px; border-radius:20px;
+    font-size:11px; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.3px;
+    border:1px solid var(--line);
+  }
+  .badge[data-tone="ok"]{ color:var(--good); border-color:var(--good); }
+  .badge[data-tone="off"]{ color:var(--text-faint); }
+  .badge[data-tone="brass"]{ color:var(--brass); border-color:var(--brass); }
+
+  .btn{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--surface-raised); border:1px solid var(--line);
+    color:var(--text); padding:8px 14px; border-radius:var(--radius);
+    cursor:pointer; font-size:13px; font-weight:500;
+    transition:border-color .12s ease, transform .06s ease;
+  }
+  .btn:hover{ border-color:var(--text-faint); }
+  .btn:active{ transform:translateY(1px); }
+  .btn--primary{ background:var(--brass); border-color:var(--brass); color:#1B1704; font-weight:600; }
+  .btn--primary:hover{ border-color:var(--brass); filter:brightness(1.06); }
+  .btn--danger{ color:var(--bad); }
+  .btn--danger:hover{ border-color:var(--bad); }
+  .btn--ghost{ background:transparent; }
+
+  .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  .field label{ font-size:11.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.3px; }
+  .field input, .field select{
+    background:var(--bg); border:1px solid var(--line); border-radius:var(--radius);
+    padding:9px 11px; color:var(--text);
+  }
+  .field input:focus, .field select:focus{ border-color:var(--brass); }
+
+  .form-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+  .modal-backdrop{
+    position:fixed; inset:0; background:#000000AA; display:none;
+    align-items:center; justify-content:center; z-index:40;
+  }
+  .modal-backdrop[data-open="true"]{ display:flex; }
+  .modal{
+    width:420px; max-width:92vw; background:var(--surface);
+    border:1px solid var(--line); border-radius:10px; padding:22px;
+  }
+  .modal__title{ font-family:var(--font-display); font-size:15px; margin:0 0 16px; }
+  .modal__actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+
+  .empty{
+    border:1px dashed var(--line-stitch); border-radius:10px;
+    padding:40px 20px; text-align:center; color:var(--text-muted);
+  }
+  .empty__stamp{ font-family:var(--font-mono); font-size:11px; letter-spacing:.5px; color:var(--text-faint); text-transform:uppercase; margin-top:6px; display:block; }
+
+  .app--loading .view{ opacity:.4; pointer-events:none; }
+
+  @media (max-width: 820px){
+    .app{ grid-template-columns:1fr; }
+    .sidebar{ display:none; }
+    .view{ padding:20px; }
+    .form-row{ grid-template-columns:1fr; }
+  }
+</style>
+
+</head>
+<body>
+
+  <div id="app" class="app app--loading">
+
+    <!-- ===== Sidebar ===== -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand__mark">◧</span>
+        <div class="brand__text">
+          <span class="brand__title">Taller</span>
+          <span class="brand__subtitle">Planificación de producción</span>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <button class="nav__item" data-module="dashboard" data-active="true">
+          <span class="nav__num">00</span> Resumen
+        </button>
+        <button class="nav__item" data-module="modelos">
+          <span class="nav__num">01</span> Modelos
+        </button>
+        <button class="nav__item" data-module="materiales">
+          <span class="nav__num">02</span> Materiales
+        </button>
+        <button class="nav__item" data-module="inventario">
+          <span class="nav__num">03</span> Inventario
+        </button>
+        <button class="nav__item" data-module="produccion">
+          <span class="nav__num">04</span> Producción
+        </button>
+        <button class="nav__item" data-module="compras">
+          <span class="nav__num">05</span> Compras
+        </button>
+        <button class="nav__item" data-module="reportes">
+          <span class="nav__num">06</span> Reportes
+        </button>
+        <button class="nav__item" data-module="usuarios" data-admin-only="true">
+          <span class="nav__num">07</span> Usuarios
+        </button>
+      </nav>
+
+      <div class="sidebar__foot">
+        <div class="session" id="sessionBox">
+          <span class="session__dot"></span>
+          <div class="session__info">
+            <span class="session__name" id="sessionName">Verificando sesión…</span>
+            <span class="session__role" id="sessionRole">—</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== Main ===== -->
+    <main class="main">
+      <header class="topbar">
+        <h1 class="topbar__title" id="viewTitle">Resumen</h1>
+        <div class="topbar__actions" id="viewActions"></div>
+      </header>
+
+      <div class="toast" id="toast"></div>
+
+      <section class="view" id="view">
+        <!-- el contenido de cada módulo se inyecta aquí desde js.html -->
+      </section>
+    </main>
+
+  </div>
+
+  <script>
+(function () {
+  'use strict';
+
+  /* ============ Comunicación con el backend ============ */
+
+  function api(action, payload) {
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(res => res && res.ok ? resolve(res.data) : reject(new Error(res ? res.error : 'Sin respuesta del servidor')))
+        .withFailureHandler(err => reject(new Error(err.message || String(err))))
+        .apiCall(action, payload || {});
+    });
+  }
+
+  function toast(msg, type) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.setAttribute('data-type', type || 'ok');
+    el.setAttribute('data-show', 'true');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => el.setAttribute('data-show', 'false'), 3400);
+  }
+
+  function esc(str) {
+    return String(str === undefined || str === null ? '' : str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function fmtDate(v) { return v ? new Date(v).toLocaleString() : '—'; }
+
+  /* ============ Modal genérico ============ */
+  function openModal(title, bodyHtml, { onMount, onSave, saveLabel } = {}) {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.setAttribute('data-open', 'true');
+    backdrop.innerHTML = `
+      <div class="modal">
+        <h3 class="modal__title">${esc(title)}</h3>
+        <div class="modal__body">${bodyHtml}</div>
+        <div class="modal__actions">
+          <button class="btn btn--ghost" data-close>Cancelar</button>
+          <button class="btn btn--primary" data-save>${esc(saveLabel || 'Guardar')}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(backdrop);
+    backdrop.querySelector('[data-close]').addEventListener('click', () => backdrop.remove());
+    if (onMount) onMount(backdrop);
+    if (onSave) backdrop.querySelector('[data-save]').addEventListener('click', () => onSave(backdrop));
+    return backdrop;
+  }
+
+  /* ============ Estado global ============ */
+  const state = { session: null, module: 'dashboard', cache: {} };
+
+  function loadSession() {
+    return api('sesion.actual').then(user => {
+      state.session = user;
+      document.getElementById('sessionBox').setAttribute('data-ok', 'true');
+      document.getElementById('sessionName').textContent = user.NOMBRE;
+      document.getElementById('sessionRole').textContent = user.ROL;
+      document.querySelectorAll('[data-admin-only="true"]').forEach(item =>
+        item.setAttribute('data-hidden', user.ROL === 'Admin' ? 'false' : 'true'));
+    }).catch(err => {
+      document.getElementById('sessionBox').setAttribute('data-ok', 'false');
+      document.getElementById('sessionName').textContent = 'Sin acceso';
+      document.getElementById('sessionRole').textContent = err.message;
+      toast(err.message, 'error');
+    });
+  }
+
+  /* ============ Router ============ */
+  const MODULE_TITLES = { dashboard:'Resumen', modelos:'Modelos', materiales:'Materiales', inventario:'Inventario', produccion:'Producción', compras:'Compras', reportes:'Reportes', usuarios:'Usuarios' };
+  const RENDERERS = { dashboard:renderDashboard, modelos:renderModelos, materiales:renderMateriales, inventario:renderInventario, produccion:renderProduccion, compras:renderCompras, reportes:renderReportes, usuarios:renderUsuarios };
+
+  function goTo(module) {
+    state.module = module;
+    document.querySelectorAll('.nav__item').forEach(el => el.setAttribute('data-current', el.dataset.module === module ? 'true' : 'false'));
+    document.getElementById('viewTitle').textContent = MODULE_TITLES[module] || module;
+    document.getElementById('viewActions').innerHTML = '';
+    const view = document.getElementById('view');
+    view.innerHTML = '<div class="empty">Cargando…</div>';
+    Promise.resolve((RENDERERS[module] || renderPlaceholder)(view)).catch(err => {
+      view.innerHTML = `<div class="empty">${esc(err.message)}</div>`;
+      toast(err.message, 'error');
+    });
+  }
+
+  function renderPlaceholder(view) {
+    view.innerHTML = `<div class="empty">Módulo no disponible.<span class="empty__stamp">Verifica tu rol</span></div>`;
+  }
+
+  /* ============ Dashboard ============ */
+  function renderDashboard(view) {
+    return api('reportes.resumenGeneral').then(r => {
+      view.innerHTML = `
+        <div class="grid-kpi">
+          <div class="kpi"><div class="kpi__label">Modelos activos</div><div class="kpi__value">${r.totalModelos}</div></div>
+          <div class="kpi"><div class="kpi__label">Materiales activos</div><div class="kpi__value">${r.totalMateriales}</div></div>
+          <div class="kpi"><div class="kpi__label">Órdenes pendientes</div><div class="kpi__value">${r.ordenesPendientes}</div></div>
+          <div class="kpi"><div class="kpi__label">Materiales bajo stock</div><div class="kpi__value" style="color:${r.materialesBajoStock>0?'var(--bad)':'inherit'}">${r.materialesBajoStock}</div></div>
+        </div>
+        <div class="card">
+          <h3 class="card__title">Sesión activa</h3>
+          <p class="card__hint">${esc(state.session.NOMBRE)} — ${esc(state.session.EMAIL)} — rol ${esc(state.session.ROL)}</p>
+        </div>`;
+    });
+  }
+
+  /* ============ Usuarios ============ */
+  function renderUsuarios(view) {
+    document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnNuevo">+ Nuevo usuario</button>`;
+    return api('usuarios.listar').then(rows => {
+      view.innerHTML = tabla(['Nombre','Email','Rol','Estado','Último acceso',''], rows.map(u => [
+        esc(u.NOMBRE), `<span class="mono">${esc(u.EMAIL)}</span>`, esc(u.ROL),
+        badge(u.ESTADO), `<span class="mono">${fmtDate(u.ULTIMO_ACCESO)}</span>`,
+        `<button class="btn btn--ghost btn--danger" data-act="del" data-id="${u.ID_USUARIO}">Desactivar</button>`
+      ]), 'Todavía no hay usuarios registrados.');
+
+      view.querySelectorAll('[data-act="del"]').forEach(b => b.addEventListener('click', () => {
+        if (!confirm('¿Desactivar este usuario?')) return;
+        api('usuarios.eliminar', { ID_USUARIO: b.dataset.id }).then(() => { toast('Usuario desactivado'); goTo('usuarios'); }).catch(e => toast(e.message, 'error'));
+      }));
+
+      document.getElementById('btnNuevo').addEventListener('click', () => openModal('Nuevo usuario', `
+        <div class="field"><label>Nombre</label><input id="mNombre"></div>
+        <div class="field"><label>Email</label><input id="mEmail" type="email"></div>
+        <div class="field"><label>Rol</label><select id="mRol"><option value="Admin">Admin</option><option value="Produccion">Producción</option><option value="Consulta">Consulta</option></select></div>
+      `, { onSave: (m) => api('usuarios.crear', {
+          NOMBRE: m.querySelector('#mNombre').value.trim(), EMAIL: m.querySelector('#mEmail').value.trim(), ROL: m.querySelector('#mRol').value
+        }).then(() => { toast('Usuario creado'); m.remove(); goTo('usuarios'); }).catch(e => toast(e.message, 'error')) }));
+    });
+  }
+
+  /* ============ Modelos ============ */
+  function renderModelos(view) {
+    document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnNuevo">+ Nuevo modelo</button>`;
+    return api('modelos.listar').then(rows => {
+      state.cache.modelos = rows;
+      view.innerHTML = tabla(['Código','Nombre','Categoría','Estado',''], rows.map(m => [
+        `<span class="mono">${esc(m.CODIGO)}</span>`, esc(m.NOMBRE), esc(m.CATEGORIA), badge(m.ESTADO),
+        `<button class="btn btn--ghost btn--danger" data-act="del" data-id="${m.ID_MODELO}">Desactivar</button>`
+      ]), 'Todavía no hay modelos. Crea el primero arriba a la derecha.');
+
+      view.querySelectorAll('[data-act="del"]').forEach(b => b.addEventListener('click', () => {
+        if (!confirm('¿Desactivar este modelo?')) return;
+        api('modelos.eliminar', { ID_MODELO: b.dataset.id }).then(() => { toast('Modelo desactivado'); goTo('modelos'); }).catch(e => toast(e.message, 'error'));
+      }));
+
+      document.getElementById('btnNuevo').addEventListener('click', () => openModal('Nuevo modelo', `
+        <div class="field"><label>Código</label><input id="mCodigo"></div>
+        <div class="field"><label>Nombre</label><input id="mNombre"></div>
+        <div class="field"><label>Categoría</label><input id="mCategoria" placeholder="Mochila, Bolso..."></div>
+        <div class="field"><label>Descripción</label><input id="mDesc"></div>
+      `, { onSave: (m) => api('modelos.crear', {
+          CODIGO: m.querySelector('#mCodigo').value.trim(), NOMBRE: m.querySelector('#mNombre').value.trim(),
+          CATEGORIA: m.querySelector('#mCategoria').value.trim(), DESCRIPCION: m.querySelector('#mDesc').value.trim()
+        }).then(() => { toast('Modelo creado'); m.remove(); goTo('modelos'); }).catch(e => toast(e.message, 'error')) }));
+    });
+  }
+
+  /* ============ Materiales + Colores ============ */
+  function renderMateriales(view) {
+    document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnNuevoMat">+ Nuevo material</button> <button class="btn" id="btnNuevoColor">+ Nuevo color</button>`;
+    return Promise.all([api('materiales.listar'), api('colores.listar')]).then(([materiales, colores]) => {
+      state.cache.materiales = materiales; state.cache.colores = colores;
+      view.innerHTML = `
+        <div class="card" style="padding:0; overflow:hidden; margin-bottom:16px;">
+          ${tabla(['Código','Nombre','Unidad','Costo unit.','Stock mín.','Estado',''], materiales.map(m => [
+            `<span class="mono">${esc(m.CODIGO)}</span>`, esc(m.NOMBRE), esc(m.UNIDAD_MEDIDA), esc(m.COSTO_UNITARIO), esc(m.STOCK_MINIMO), badge(m.ESTADO),
+            `<button class="btn btn--ghost btn--danger" data-act="delMat" data-id="${m.ID_MATERIAL}">Desactivar</button>`
+          ]), 'No hay materiales todavía.', true)}
+        </div>
+        <div class="card__title" style="margin-top:8px;">Colores</div>
+        <div class="card" style="padding:0; overflow:hidden;">
+          ${tabla(['Nombre','Hex','Estado',''], colores.map(c => [
+            esc(c.NOMBRE), `<span class="mono">${esc(c.CODIGO_HEX)}</span>`, badge(c.ESTADO),
+            `<button class="btn btn--ghost btn--danger" data-act="delColor" data-id="${c.ID_COLOR}">Desactivar</button>`
+          ]), 'No hay colores todavía.', true)}
+        </div>`;
+
+      view.querySelectorAll('[data-act="delMat"]').forEach(b => b.addEventListener('click', () => {
+        if (!confirm('¿Desactivar este material?')) return;
+        api('materiales.eliminar', { ID_MATERIAL: b.dataset.id }).then(() => { toast('Material desactivado'); goTo('materiales'); }).catch(e => toast(e.message, 'error'));
+      }));
+      view.querySelectorAll('[data-act="delColor"]').forEach(b => b.addEventListener('click', () => {
+        if (!confirm('¿Desactivar este color?')) return;
+        api('colores.eliminar', { ID_COLOR: b.dataset.id }).then(() => { toast('Color desactivado'); goTo('materiales'); }).catch(e => toast(e.message, 'error'));
+      }));
+
+      document.getElementById('btnNuevoMat').addEventListener('click', () => openModal('Nuevo material', `
+        <div class="field"><label>Código</label><input id="mCodigo"></div>
+        <div class="field"><label>Nombre</label><input id="mNombre"></div>
+        <div class="form-row">
+          <div class="field"><label>Unidad de medida</label><input id="mUnidad" placeholder="m, kg, unid."></div>
+          <div class="field"><label>Costo unitario</label><input id="mCosto" type="number" step="0.01"></div>
+        </div>
+        <div class="field"><label>Stock mínimo</label><input id="mStockMin" type="number" step="0.01"></div>
+      `, { onSave: (m) => api('materiales.crear', {
+          CODIGO: m.querySelector('#mCodigo').value.trim(), NOMBRE: m.querySelector('#mNombre').value.trim(),
+          UNIDAD_MEDIDA: m.querySelector('#mUnidad').value.trim(), COSTO_UNITARIO: m.querySelector('#mCosto').value,
+          STOCK_MINIMO: m.querySelector('#mStockMin').value
+        }).then(() => { toast('Material creado'); m.remove(); goTo('materiales'); }).catch(e => toast(e.message, 'error')) }));
+
+      document.getElementById('btnNuevoColor').addEventListener('click', () => openModal('Nuevo color', `
+        <div class="field"><label>Nombre</label><input id="cNombre"></div>
+        <div class="field"><label>Código hex</label><input id="cHex" placeholder="#RRGGBB"></div>
+      `, { onSave: (m) => api('colores.crear', {
+          NOMBRE: m.querySelector('#cNombre').value.trim(), CODIGO_HEX: m.querySelector('#cHex').value.trim()
+        }).then(() => { toast('Color creado'); m.remove(); goTo('materiales'); }).catch(e => toast(e.message, 'error')) }));
+    });
+  }
+
+  /* ============ Inventario ============ */
+  function renderInventario(view) {
+    document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnAjustar">Ajustar stock</button>`;
+    return Promise.all([api('inventario.listar'), api('materiales.listar'), api('colores.listar')]).then(([inv, materiales, colores]) => {
+      state.cache.materiales = materiales; state.cache.colores = colores;
+      view.innerHTML = tabla(['Material','Color','Stock actual','Stock mínimo','Ubicación',''], inv.map(i => [
+        esc(i.NOMBRE_MATERIAL), esc(i.NOMBRE_COLOR || '—'),
+        `<span class="mono" style="${i.BAJO_STOCK ? 'color:var(--bad)' : ''}">${esc(i.STOCK_ACTUAL)}</span>`,
+        `<span class="mono">${esc(i.STOCK_MINIMO)}</span>`, esc(i.UBICACION),
+        i.BAJO_STOCK ? '<span class="badge" data-tone="off" style="border-color:var(--bad);color:var(--bad)">Bajo stock</span>' : ''
+      ]), 'Sin movimientos de inventario todavía.');
+
+      document.getElementById('btnAjustar').addEventListener('click', () => openModal('Ajustar stock', `
+        <div class="field"><label>Material</label><select id="aMaterial">${materiales.map(m => `<option value="${m.ID_MATERIAL}">${esc(m.NOMBRE)}</option>`).join('')}</select></div>
+        <div class="field"><label>Color (opcional)</label><select id="aColor"><option value="">—</option>${colores.map(c => `<option value="${c.ID_COLOR}">${esc(c.NOMBRE)}</option>`).join('')}</select></div>
+        <div class="field"><label>Cantidad (negativo para restar)</label><input id="aCantidad" type="number" step="0.01"></div>
+        <div class="field"><label>Motivo</label><input id="aObs" placeholder="Conteo físico, merma..."></div>
+      `, { onSave: (m) => api('inventario.ajustar', {
+          ID_MATERIAL: m.querySelector('#aMaterial').value, ID_COLOR: m.querySelector('#aColor').value,
+          CANTIDAD: m.querySelector('#aCantidad').value, OBSERVACIONES: m.querySelector('#aObs').value
+        }).then(() => { toast('Stock ajustado'); m.remove(); goTo('inventario'); }).catch(e => toast(e.message, 'error')) }));
+    });
+  }
+
+  /* ============ Producción ============ */
+  function renderProduccion(view) {
+    document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnNueva">+ Nueva orden</button>`;
+    return Promise.all([api('produccion.listar'), api('modelos.listar'), api('colores.listar')]).then(([ordenes, modelos, colores]) => {
+      state.cache.modelos = modelos; state.cache.colores = colores;
+      view.innerHTML = tabla(['Código','Modelo','Cantidad','Entrega','Estado',''], ordenes.map(o => [
+        `<span class="mono">${esc(o.CODIGO_ORDEN)}</span>`, esc(o.NOMBRE_MODELO), esc(o.CANTIDAD_TOTAL),
+        esc(o.FECHA_ENTREGA_ESTIMADA || '—'), estadoSelect(o),
+        `<button class="btn btn--ghost" data-act="pdf" data-id="${o.ID_ORDEN}">PDF</button>`
+      ]), 'Todavía no hay órdenes de producción.');
+
+      view.querySelectorAll('[data-act="pdf"]').forEach(b => b.addEventListener('click', () => {
+        toast('Generando PDF…');
+        api('pdf.generarOrdenPdf', { ID_ORDEN: b.dataset.id }).then(r => window.open(r.url, '_blank')).catch(e => toast(e.message, 'error'));
+      }));
+      view.querySelectorAll('[data-act="estado"]').forEach(sel => sel.addEventListener('change', () => {
+        api('produccion.cambiarEstado', { ID_ORDEN: sel.dataset.id, ESTADO: sel.value }).then(() => toast('Estado actualizado')).catch(e => toast(e.message, 'error'));
+      }));
+
+      document.getElementById('btnNueva').addEventListener('click', () => abrirModalNuevaOrden(modelos, colores));
+    });
+  }
+
+  function estadoSelect(o) {
+    const estados = ['Pendiente','En proceso','Completada','Cancelada'];
+    return `<select data-act="estado" data-id="${o.ID_ORDEN}">${estados.map(e => `<option value="${e}" ${e===o.ESTADO?'selected':''}>${e}</option>`).join('')}</select>`;
+  }
+
+  function abrirModalNuevaOrden(modelos, colores) {
+    let filas = [{ ID_COLOR: colores[0] ? colores[0].ID_COLOR : '', CANTIDAD: '' }];
+
+    function bodyHtml() {
+      return `
+        <div class="field"><label>Modelo</label><select id="pModelo">${modelos.map(m => `<option value="${m.ID_MODELO}">${esc(m.NOMBRE)}</option>`).join('')}</select></div>
+        <div class="field"><label>Fecha entrega estimada</label><input id="pFecha" type="date"></div>
+        <div id="filasColor">
+          ${filas.map((f, i) => `
+            <div class="form-row" data-fila="${i}">
+              <div class="field"><label>Color</label><select data-f="color">${colores.map(c => `<option value="${c.ID_COLOR}" ${c.ID_COLOR===f.ID_COLOR?'selected':''}>${esc(c.NOMBRE)}</option>`).join('')}</select></div>
+              <div class="field"><label>Cantidad</label><input data-f="cantidad" type="number" value="${f.CANTIDAD}"></div>
+            </div>`).join('')}
+        </div>
+        <button class="btn btn--ghost" id="btnAddColor" type="button">+ Agregar color</button>
+        <div id="previewConsumo" style="margin-top:14px;"></div>`;
+    }
+
+    const modal = openModal('Nueva orden de producción', bodyHtml(), { saveLabel: 'Crear orden' });
+
+    function leerDetalle(m) {
+      return Array.from(m.querySelectorAll('[data-fila]')).map(row => ({
+        ID_COLOR: row.querySelector('[data-f="color"]').value,
+        CANTIDAD: Number(row.querySelector('[data-f="cantidad"]').value || 0)
+      })).filter(d => d.CANTIDAD > 0);
+    }
+
+    function wire(m) {
+      m.querySelector('#btnAddColor').addEventListener('click', () => {
+        filas.push({ ID_COLOR: colores[0] ? colores[0].ID_COLOR : '', CANTIDAD: '' });
+        m.querySelector('.modal__body').innerHTML = bodyHtml();
+        wire(m);
+      });
+      m.querySelector('[data-save]') && null;
+    }
+    wire(modal);
+
+    modal.querySelector('[data-save]').addEventListener('click', () => {
+      const idModelo = modal.querySelector('#pModelo').value;
+      const detalle = leerDetalle(modal);
+      if (detalle.length === 0) { toast('Agrega al menos un color con cantidad', 'error'); return; }
+
+      api('produccion.crearOrden', { ID_MODELO: idModelo, detalleColores: detalle, FECHA_ENTREGA_ESTIMADA: modal.querySelector('#pFecha').value })
+        .then(orden => { toast(`Orden ${orden.CODIGO_ORDEN} creada`); modal.remove(); goTo('produccion'); })
+        .catch(e => {
+          if (e.message.indexOf('Stock insuficiente') !== -1) {
+            toast(e.message, 'error');
+          } else {
+            toast(e.message, 'error');
+          }
+        });
+    });
+  }
+
+  /* ============ Compras ============ */
+  function renderCompras(view) {
+    document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnNuevaCompra">+ Nueva compra</button>`;
+    return Promise.all([api('compras.listar'), api('proveedores.listar'), api('materiales.listar'), api('compras.listaSugerida')]).then(([compras, proveedores, materiales, sugerida]) => {
+      let html = '';
+      if (sugerida.length > 0) {
+        html += `<div class="card" style="border-color:var(--bad); margin-bottom:16px;">
+          <h3 class="card__title" style="color:var(--bad)">Sugerencia de compra — ${sugerida.length} material(es) bajo stock</h3>
+          <p class="card__hint">${sugerida.map(s => `${esc(s.NOMBRE_MATERIAL)}${s.NOMBRE_COLOR ? ' ('+esc(s.NOMBRE_COLOR)+')' : ''}: ${s.STOCK_ACTUAL}/${s.STOCK_MINIMO}`).join(' · ')}</p>
+        </div>`;
+      }
+      html += tabla(['Código','Proveedor','Fecha','Total','Estado',''], compras.map(c => [
+        `<span class="mono">${esc(c.CODIGO_COMPRA)}</span>`, esc(c.NOMBRE_PROVEEDOR), fmtDate(c.FECHA_COMPRA), esc(c.TOTAL), badge(c.ESTADO === 'Recibida' ? 'Activo' : 'Inactivo', c.ESTADO),
+        c.ESTADO === 'Pendiente' ? `<button class="btn btn--ghost" data-act="recibir" data-id="${c.ID_COMPRA}">Recibir</button>` : ''
+      ]), 'Todavía no hay compras registradas.');
+      view.innerHTML = html;
+
+      view.querySelectorAll('[data-act="recibir"]').forEach(b => b.addEventListener('click', () => {
+        if (!confirm('¿Marcar como recibida y actualizar inventario?')) return;
+        api('compras.recibir', { ID_COMPRA: b.dataset.id }).then(() => { toast('Compra recibida, inventario actualizado'); goTo('compras'); }).catch(e => toast(e.message, 'error'));
+      }));
+
+      document.getElementById('btnNuevaCompra').addEventListener('click', () => abrirModalNuevaCompra(proveedores, materiales));
+    });
+  }
+
+  function abrirModalNuevaCompra(proveedores, materiales) {
+    let filas = [{ ID_MATERIAL: materiales[0] ? materiales[0].ID_MATERIAL : '', CANTIDAD: '', COSTO_UNITARIO: '' }];
+
+    function bodyHtml() {
+      return `
+        <div class="field"><label>Proveedor</label><select id="cProveedor">${proveedores.map(p => `<option value="${p.ID_PROVEEDOR}">${esc(p.NOMBRE)}</option>`).join('')}</select></div>
+        <div id="filasMat">
+          ${filas.map((f, i) => `
+            <div class="form-row" data-fila="${i}">
+              <div class="field"><label>Material</label><select data-f="mat">${materiales.map(m => `<option value="${m.ID_MATERIAL}" ${m.ID_MATERIAL===f.ID_MATERIAL?'selected':''}>${esc(m.NOMBRE)}</option>`).join('')}</select></div>
+              <div class="field"><label>Cantidad</label><input data-f="cant" type="number" value="${f.CANTIDAD}"></div>
+              <div class="field"><label>Costo unit.</label><input data-f="costo" type="number" step="0.01" value="${f.COSTO_UNITARIO}"></div>
+            </div>`).join('')}
+        </div>
+        <button class="btn btn--ghost" id="btnAddMat" type="button">+ Agregar material</button>`;
+    }
+
+    const modal = openModal('Nueva compra', bodyHtml(), { saveLabel: 'Crear compra' });
+    function wire(m) {
+      m.querySelector('#btnAddMat').addEventListener('click', () => {
+        filas.push({ ID_MATERIAL: materiales[0] ? materiales[0].ID_MATERIAL : '', CANTIDAD: '', COSTO_UNITARIO: '' });
+        m.querySelector('.modal__body').innerHTML = bodyHtml();
+        wire(m);
+      });
+    }
+    wire(modal);
+
+    modal.querySelector('[data-save]').addEventListener('click', () => {
+      const detalle = Array.from(modal.querySelectorAll('[data-fila]')).map(row => ({
+        ID_MATERIAL: row.querySelector('[data-f="mat"]').value,
+        CANTIDAD: Number(row.querySelector('[data-f="cant"]').value || 0),
+        COSTO_UNITARIO: Number(row.querySelector('[data-f="costo"]').value || 0)
+      })).filter(d => d.CANTIDAD > 0 && d.COSTO_UNITARIO > 0);
+
+      if (detalle.length === 0) { toast('Agrega al menos un material con cantidad y costo', 'error'); return; }
+      api('compras.crear', { ID_PROVEEDOR: modal.querySelector('#cProveedor').value, detalle: detalle })
+        .then(c => { toast(`Compra ${c.CODIGO_COMPRA} creada`); modal.remove(); goTo('compras'); })
+        .catch(e => toast(e.message, 'error'));
+    });
+  }
+
+  /* ============ Reportes ============ */
+  function renderReportes(view) {
+    document.getElementById('viewActions').innerHTML = '';
+    return api('reportes.consumoPorModelo').then(rows => {
+      view.innerHTML = `
+        <div class="card">
+          <h3 class="card__title">Costo por orden</h3>
+          <p class="card__hint">Ingresa el ID de una orden para ver su costo estimado de materiales.</p>
+          <div class="form-row">
+            <div class="field"><label>ID de orden</label><input id="rIdOrden"></div>
+          </div>
+          <button class="btn btn--primary" id="btnCostear">Calcular</button>
+          <div id="costoResultado" style="margin-top:14px;"></div>
+        </div>
+        <div class="card__title" style="margin-top:20px;">Producción acumulada por modelo</div>
+        <div class="card" style="padding:0; overflow:hidden;">
+          ${tabla(['Modelo','Total unidades','Total órdenes'], rows.map(r => [esc(r.NOMBRE_MODELO), esc(r.TOTAL_UNIDADES), esc(r.TOTAL_ORDENES)]), 'Todavía no hay órdenes de producción.', true)}
+        </div>`;
+
+      document.getElementById('btnCostear').addEventListener('click', () => {
+        const id = document.getElementById('rIdOrden').value.trim();
+        if (!id) return;
+        api('reportes.costoPorLote', { ID_ORDEN: id }).then(r => {
+          document.getElementById('costoResultado').innerHTML = `
+            <div class="kpi" style="display:inline-block;"><div class="kpi__label">Costo total ${esc(r.CODIGO_ORDEN)}</div><div class="kpi__value">${r.COSTO_TOTAL}</div></div>`;
+        }).catch(e => toast(e.message, 'error'));
+      });
+    });
+  }
+
+  /* ============ Helpers de render ============ */
+  function badge(estado, label) {
+    return `<span class="badge" data-tone="${estado === 'Activo' ? 'ok' : 'off'}">${esc(label || estado)}</span>`;
+  }
+
+  function tabla(headers, filas, vacioMsg, compacto) {
+    if (filas.length === 0) return `<div class="empty">${esc(vacioMsg)}</div>`;
+    const wrap = compacto ? ['', ''] : ['<div class="card" style="padding:0; overflow:hidden;">', '</div>'];
+    return `${wrap[0]}<table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+      <tbody>${filas.map(f => `<tr>${f.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>${wrap[1]}`;
+  }
+
+  /* ============ Bootstrap ============ */
+  document.querySelectorAll('.nav__item').forEach(item => item.addEventListener('click', () => goTo(item.dataset.module)));
+  loadSession().finally(() => { document.getElementById('app').classList.remove('app--loading'); goTo('dashboard'); });
+
+})();
+</script>
+
+</body>
+</html>
