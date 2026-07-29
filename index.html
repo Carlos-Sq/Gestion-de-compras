@@ -228,21 +228,43 @@
         <button class="nav__item" data-module="reportes">
           <span class="nav__num">06</span> Reportes
         </button>
-        <button class="nav__item" data-module="usuarios" data-admin-only="true">
+        <button class="nav__item" data-module="usuarios">
           <span class="nav__num">07</span> Usuarios
         </button>
       </nav>
 
       <div class="sidebar__foot">
-        <div class="session" id="sessionBox">
+        <div class="session" id="sessionBox" data-ok="true">
           <span class="session__dot"></span>
           <div class="session__info">
-            <span class="session__name" id="sessionName">Verificando sesión…</span>
-            <span class="session__role" id="sessionRole">—</span>
+            <span class="session__name" id="sessionName">Conectado</span>
+            <span class="session__role" id="sessionRole" style="cursor:pointer; text-decoration:underline;">Cambiar hoja de cálculo</span>
           </div>
         </div>
       </div>
     </aside>
+
+    <!-- ===== Pantalla de configuración (primera vez / cambiar URL) ===== -->
+    <div class="modal-backdrop" id="configScreen" data-open="false">
+      <div class="modal">
+        <h3 class="modal__title">Conectar con tu Google Sheet</h3>
+        <div class="modal__body">
+          <p style="color:var(--text-muted); font-size:13px; margin-bottom:14px;">
+            Pega aquí la URL de tu Apps Script Web App (la que termina en <code>/exec</code>).
+            Esa Web App es la que está conectada a tu hoja de cálculo en Drive.
+          </p>
+          <div class="field">
+            <label>URL de la Web App (Apps Script)</label>
+            <input type="text" id="configUrlInput" placeholder="https://script.google.com/macros/s/AKfycb.../exec">
+          </div>
+          <p class="config__error" id="configError" style="color:var(--bad); font-size:13px; display:none;"></p>
+        </div>
+        <div class="modal__actions">
+          <button class="btn btn--ghost" id="configCancel" style="display:none;">Cancelar</button>
+          <button class="btn btn--primary" id="configSave">Conectar</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ===== Main ===== -->
     <main class="main">
@@ -264,15 +286,45 @@
 (function () {
   'use strict';
 
-  /* ============ Comunicación con el backend ============ */
+  /* ============ Comunicación con el backend (Apps Script vía fetch) ============ */
+
+  // URL de tu Web App de Apps Script. Ya viene puesta: nadie tiene que
+  // configurar nada al entrar. Si algún día despliegas una nueva versión
+  // con OTRA url, solo cámbiala aquí.
+  const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycby0jNfvM1ICSzoyBpcNy-yFl4SIo-qp2Nh06fMgr0401osOJpIr9fq99ki8QZOKz7ND/exec';
+
+  const API_URL_KEY = 'tutokeya_api_url';
+
+  function getApiUrl() {
+    return localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL;
+  }
+
+  function setApiUrl(url) {
+    localStorage.setItem(API_URL_KEY, url.trim());
+  }
 
   function api(action, payload) {
-    return new Promise((resolve, reject) => {
-      google.script.run
-        .withSuccessHandler(res => res && res.ok ? resolve(res.data) : reject(new Error(res ? res.error : 'Sin respuesta del servidor')))
-        .withFailureHandler(err => reject(new Error(err.message || String(err))))
-        .apiCall(action, payload || {});
-    });
+    const url = getApiUrl();
+    if (!url) return Promise.reject(new Error('No hay ninguna hoja de cálculo conectada todavía.'));
+
+    return fetch(url, {
+      method: 'POST',
+      // text/plain evita el preflight CORS (OPTIONS) que Apps Script no maneja
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, payload: payload || {} })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('El servidor respondió con error HTTP ' + res.status);
+        return res.json();
+      })
+      .then(res => res && res.ok ? res.data : Promise.reject(new Error(res ? res.error : 'Sin respuesta del servidor')))
+      .catch(err => {
+        if (err instanceof TypeError) {
+          // fetch falla por red/CORS/URL incorrecta, no por lógica del backend
+          throw new Error('No se pudo conectar con la Web App. Verifica que la URL sea correcta y que el deployment tenga acceso "Cualquier usuario".');
+        }
+        throw err;
+      });
   }
 
   function toast(msg, type) {
@@ -313,23 +365,52 @@
   }
 
   /* ============ Estado global ============ */
-  const state = { session: null, module: 'dashboard', cache: {} };
+  const state = { module: 'dashboard', cache: {} };
 
-  function loadSession() {
-    return api('sesion.actual').then(user => {
-      state.session = user;
+  /* ============ Configuración de la URL de la Web App ============ */
+  function showConfigScreen(cancelable) {
+    const screen = document.getElementById('configScreen');
+    const input = document.getElementById('configUrlInput');
+    const errorEl = document.getElementById('configError');
+    const cancelBtn = document.getElementById('configCancel');
+    input.value = getApiUrl();
+    errorEl.style.display = 'none';
+    cancelBtn.style.display = cancelable ? 'inline-flex' : 'none';
+    screen.setAttribute('data-open', 'true');
+    setTimeout(() => input.focus(), 50);
+  }
+
+  function hideConfigScreen() {
+    document.getElementById('configScreen').setAttribute('data-open', 'false');
+  }
+
+  function testAndSaveApiUrl(url) {
+    const errorEl = document.getElementById('configError');
+    errorEl.style.display = 'none';
+    if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url.trim())) {
+      errorEl.textContent = 'Esa URL no parece una Web App de Apps Script válida (debe empezar con https://script.google.com/macros/s/ y terminar en /exec).';
+      errorEl.style.display = 'block';
+      return;
+    }
+    setApiUrl(url);
+    document.getElementById('sessionName').textContent = 'Conectando…';
+    api('reportes.resumenGeneral').then(() => {
+      hideConfigScreen();
       document.getElementById('sessionBox').setAttribute('data-ok', 'true');
-      document.getElementById('sessionName').textContent = user.NOMBRE;
-      document.getElementById('sessionRole').textContent = user.ROL;
-      document.querySelectorAll('[data-admin-only="true"]').forEach(item =>
-        item.setAttribute('data-hidden', user.ROL === 'Admin' ? 'false' : 'true'));
+      document.getElementById('sessionName').textContent = 'Conectado';
+      goTo('dashboard');
     }).catch(err => {
-      document.getElementById('sessionBox').setAttribute('data-ok', 'false');
-      document.getElementById('sessionName').textContent = 'Sin acceso';
-      document.getElementById('sessionRole').textContent = err.message;
-      toast(err.message, 'error');
+      document.getElementById('sessionName').textContent = 'Sin conexión';
+      errorEl.textContent = 'No se pudo conectar: ' + err.message;
+      errorEl.style.display = 'block';
     });
   }
+
+  document.getElementById('configSave').addEventListener('click', () => {
+    testAndSaveApiUrl(document.getElementById('configUrlInput').value);
+  });
+  document.getElementById('configCancel').addEventListener('click', hideConfigScreen);
+  document.getElementById('sessionRole').addEventListener('click', () => showConfigScreen(!!getApiUrl()));
 
   /* ============ Router ============ */
   const MODULE_TITLES = { dashboard:'Resumen', modelos:'Modelos', materiales:'Materiales', inventario:'Inventario', produccion:'Producción', compras:'Compras', reportes:'Reportes', usuarios:'Usuarios' };
@@ -363,8 +444,8 @@
           <div class="kpi"><div class="kpi__label">Materiales bajo stock</div><div class="kpi__value" style="color:${r.materialesBajoStock>0?'var(--bad)':'inherit'}">${r.materialesBajoStock}</div></div>
         </div>
         <div class="card">
-          <h3 class="card__title">Sesión activa</h3>
-          <p class="card__hint">${esc(state.session.NOMBRE)} — ${esc(state.session.EMAIL)} — rol ${esc(state.session.ROL)}</p>
+          <h3 class="card__title">Conexión</h3>
+          <p class="card__hint">Conectado a tu hoja de cálculo · acceso libre, sin usuario</p>
         </div>`;
     });
   }
@@ -690,7 +771,19 @@
 
   /* ============ Bootstrap ============ */
   document.querySelectorAll('.nav__item').forEach(item => item.addEventListener('click', () => goTo(item.dataset.module)));
-  loadSession().finally(() => { document.getElementById('app').classList.remove('app--loading'); goTo('dashboard'); });
+
+  (function init() {
+    const savedUrl = getApiUrl();
+    document.getElementById('app').classList.remove('app--loading');
+    if (!savedUrl) {
+      // Primera vez: pide la URL de la Web App antes de mostrar nada más
+      showConfigScreen(false);
+      return;
+    }
+    document.getElementById('sessionBox').setAttribute('data-ok', 'true');
+    document.getElementById('sessionName').textContent = 'Conectado';
+    goTo('dashboard');
+  })();
 
 })();
 </script>
