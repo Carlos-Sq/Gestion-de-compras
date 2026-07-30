@@ -679,9 +679,84 @@
       const detalle = leerDetalle(modal);
       if (detalle.length === 0) { toast('Agrega al menos un color con cantidad', 'error'); return; }
       api('produccion.crearOrden', { ID_MODELO: idModelo, detalleColores: detalle })
-        .then(orden => { toast(`Orden ${orden.CODIGO_ORDEN} creada`); modal.remove(); goTo('produccion'); })
+        .then(orden => {
+          toast(`Orden ${orden.CODIGO_ORDEN} creada`);
+          modal.remove();
+          goTo('produccion'); // refresca la lista de fondo con la orden recién creada
+          mostrarConfirmacionOrden(orden, modelos);
+        })
         .catch(e => toast(e.message, 'error'));
     });
+  }
+
+  /**
+   * Pantalla de confirmación que aparece justo después de crear una orden.
+   * `orden` ya trae CODIGO_ORDEN, CANTIDAD_TOTAL, FECHA_CREACION, ID_ORDEN y
+   * `calculo.NOMBRE_MODELO` (todo devuelto por produccion.crearOrden), así que
+   * no hace falta pedir nada más al backend para mostrar el resumen.
+   */
+  function mostrarConfirmacionOrden(orden, modelos) {
+    const nombreModelo = (orden.calculo && orden.calculo.NOMBRE_MODELO)
+      || (modelos.find(m => m.ID_MODELO === orden.ID_MODELO) || {}).NOMBRE || orden.ID_MODELO;
+
+    const modal = openModal('Orden creada', `
+      <div class="preview-kpis">
+        <div class="preview-kpi"><div class="preview-kpi__label">Código</div><div class="preview-kpi__value">${esc(orden.CODIGO_ORDEN)}</div></div>
+        <div class="preview-kpi"><div class="preview-kpi__label">Modelo</div><div class="preview-kpi__value">${esc(nombreModelo)}</div></div>
+        <div class="preview-kpi"><div class="preview-kpi__label">Cantidad total</div><div class="preview-kpi__value">${fmtNum(orden.CANTIDAD_TOTAL)}</div></div>
+        <div class="preview-kpi"><div class="preview-kpi__label">Fecha</div><div class="preview-kpi__value">${fmtDate(orden.FECHA_CREACION)}</div></div>
+      </div>
+      <div id="pdfActions" style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+        <button class="btn btn--primary" id="btnGenerarPdf">Generar PDF</button>
+      </div>`, {
+      subtitle: 'La orden se guardó correctamente.'
+    });
+
+    const actionsEl = modal.querySelector('#pdfActions');
+
+    function pedirPdf() {
+      actionsEl.innerHTML = '<div class="preview-box__loading">Generando PDF…</div>';
+      api('pdf.generarOrdenPdf', { ID_ORDEN: orden.ID_ORDEN }).then(r => {
+        actionsEl.innerHTML = `
+          <button class="btn btn--primary" id="btnAbrirPdf">Abrir PDF</button>
+          <button class="btn" id="btnDescargarPdf">Descargar PDF</button>
+          <button class="btn btn--ghost" id="btnOtraOrden">+ Nueva orden</button>`;
+        actionsEl.querySelector('#btnAbrirPdf').addEventListener('click', () => window.open(r.url, '_blank'));
+        actionsEl.querySelector('#btnDescargarPdf').addEventListener('click', () => descargarArchivo(r.url, `${orden.CODIGO_ORDEN}.pdf`));
+        actionsEl.querySelector('#btnOtraOrden').addEventListener('click', () => { modal.remove(); abrirModalNuevaOrden(modelos); });
+      }).catch(e => {
+        actionsEl.innerHTML = `
+          <div class="preview-box__loading" style="color:var(--bad)">${esc(e.message)}</div>
+          <button class="btn btn--primary" id="btnReintentarPdf">Reintentar</button>`;
+        actionsEl.querySelector('#btnReintentarPdf').addEventListener('click', pedirPdf);
+        toast(e.message, 'error');
+      });
+    }
+
+    actionsEl.querySelector('#btnGenerarPdf').addEventListener('click', pedirPdf);
+  }
+
+  /**
+   * Convierte la URL de vista de Drive (la que devuelve pdf.generarOrdenPdf)
+   * en una URL de descarga directa, sin tocar el backend: solo se extrae el
+   * ID del archivo y se arma el enlace uc?export=download que Drive entiende.
+   */
+  function extraerIdDrive(url) {
+    const m = String(url).match(/\/d\/([^/]+)/) || String(url).match(/[?&]id=([^&]+)/);
+    return m ? m[1] : null;
+  }
+
+  function descargarArchivo(url, filename) {
+    const id = extraerIdDrive(url);
+    const descargaUrl = id ? `https://drive.google.com/uc?export=download&id=${id}` : url;
+    const a = document.createElement('a');
+    a.href = descargaUrl;
+    a.download = filename || '';
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   /* ================================ Bootstrap ================================ */
