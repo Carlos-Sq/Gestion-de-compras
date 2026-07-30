@@ -3,6 +3,8 @@
 <head>
   <base target="_top">
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Taller — Planificación de producción</title>
   <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -18,7 +20,9 @@
     --brass:         #C9A227;
     --brass-soft:    #C9A22722;
     --good:          #5FA876;
+    --good-soft:     #5FA87622;
     --bad:           #CB6552;
+    --bad-soft:      #CB655222;
 
     --font-display: 'Space Grotesk', sans-serif;
     --font-body:    'Inter', sans-serif;
@@ -53,6 +57,7 @@
     display:flex;
     flex-direction:column;
     padding:20px 14px;
+    overflow-y:auto;
   }
   .brand{ display:flex; align-items:center; gap:10px; padding:6px 8px 22px; }
   .brand__mark{ font-size:20px; color:var(--brass); }
@@ -67,12 +72,12 @@
     text-align:left; padding:9px 10px; border-radius:var(--radius);
     color:var(--text-muted); cursor:pointer;
     transition:background .12s ease, color .12s ease;
+    width:100%;
   }
   .nav__item:hover{ background:var(--surface-raised); color:var(--text); }
   .nav__item[data-current="true"]{ background:var(--brass-soft); color:var(--brass); }
-  .nav__num{ font-family:var(--font-mono); font-size:11px; color:var(--text-faint); width:18px; }
+  .nav__num{ font-family:var(--font-mono); font-size:11px; color:var(--text-faint); width:20px; flex-shrink:0; }
   .nav__item[data-current="true"] .nav__num{ color:var(--brass); }
-  .nav__item[data-hidden="true"]{ display:none; }
 
   .sidebar__foot{ padding-top:14px; border-top:1px dashed var(--line-stitch); }
   .session{ display:flex; align-items:center; gap:9px; padding:6px; }
@@ -81,26 +86,29 @@
   .session[data-ok="false"] .session__dot{ background:var(--bad); }
   .session__info{ display:flex; flex-direction:column; line-height:1.3; overflow:hidden; }
   .session__name{ font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .session__role{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.4px; }
+  .session__role{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.4px; cursor:pointer; text-decoration:underline; }
 
   /* ===== Main ===== */
   .main{ display:flex; flex-direction:column; min-width:0; }
   .topbar{
     display:flex; align-items:center; justify-content:space-between;
     padding:22px 32px; border-bottom:1px dashed var(--line-stitch);
+    gap:16px; flex-wrap:wrap;
   }
   .topbar__title{ font-family:var(--font-display); font-size:20px; font-weight:600; margin:0; }
-  .topbar__actions{ display:flex; gap:8px; }
+  .topbar__hint{ color:var(--text-faint); font-size:12px; margin-top:3px; }
+  .topbar__actions{ display:flex; gap:8px; flex-wrap:wrap; }
 
   .view{ padding:28px 32px; overflow:auto; }
 
   .toast{
-    position:fixed; top:20px; right:24px; z-index:50;
+    position:fixed; top:20px; right:24px; z-index:60;
     padding:11px 16px; border-radius:var(--radius);
     font-size:13px; background:var(--surface-raised);
     border:1px solid var(--line); box-shadow:0 6px 20px #00000055;
     opacity:0; transform:translateY(-6px); pointer-events:none;
     transition:opacity .18s ease, transform .18s ease;
+    max-width:360px;
   }
   .toast[data-show="true"]{ opacity:1; transform:translateY(0); }
   .toast[data-type="ok"]{ border-color:var(--good); }
@@ -124,18 +132,24 @@
   thead th{
     text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.4px;
     color:var(--text-faint); font-weight:600; padding:8px 10px; border-bottom:1px dashed var(--line-stitch);
+    white-space:nowrap;
   }
-  tbody td{ padding:10px 10px; border-bottom:1px solid var(--line); font-size:13px; }
-  tbody tr:hover{ background:var(--surface-raised); }
+  tbody td{ padding:10px 10px; border-bottom:1px solid var(--line); font-size:13px; vertical-align:middle; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr[data-clickable="true"]{ cursor:pointer; }
+  tbody tr[data-clickable="true"]:hover{ background:var(--surface-raised); }
   td.mono, .mono{ font-family:var(--font-mono); font-size:12.5px; }
+  .table-wrap{ overflow-x:auto; }
+  .row-actions{ display:flex; gap:6px; justify-content:flex-end; white-space:nowrap; }
 
   .badge{
     display:inline-flex; align-items:center; padding:3px 8px; border-radius:20px;
     font-size:11px; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.3px;
-    border:1px solid var(--line);
+    border:1px solid var(--line); white-space:nowrap;
   }
   .badge[data-tone="ok"]{ color:var(--good); border-color:var(--good); }
   .badge[data-tone="off"]{ color:var(--text-faint); }
+  .badge[data-tone="bad"]{ color:var(--bad); border-color:var(--bad); }
   .badge[data-tone="brass"]{ color:var(--brass); border-color:var(--brass); }
 
   .btn{
@@ -147,33 +161,46 @@
   }
   .btn:hover{ border-color:var(--text-faint); }
   .btn:active{ transform:translateY(1px); }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
   .btn--primary{ background:var(--brass); border-color:var(--brass); color:#1B1704; font-weight:600; }
   .btn--primary:hover{ border-color:var(--brass); filter:brightness(1.06); }
   .btn--danger{ color:var(--bad); }
   .btn--danger:hover{ border-color:var(--bad); }
   .btn--ghost{ background:transparent; }
+  .btn--sm{ padding:5px 10px; font-size:12px; }
 
   .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
   .field label{ font-size:11.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.3px; }
-  .field input, .field select{
+  .field__hint{ font-size:11px; color:var(--text-faint); margin-top:-2px; }
+  .field input, .field select, .field textarea{
     background:var(--bg); border:1px solid var(--line); border-radius:var(--radius);
-    padding:9px 11px; color:var(--text);
+    padding:9px 11px; color:var(--text); width:100%;
   }
-  .field input:focus, .field select:focus{ border-color:var(--brass); }
+  .field input:focus, .field select:focus, .field textarea:focus{ border-color:var(--brass); }
+  .field--checkbox{ flex-direction:row; align-items:center; gap:8px; }
+  .field--checkbox label{ text-transform:none; letter-spacing:0; font-size:13px; color:var(--text); }
 
   .form-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .form-row--3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+
+  .subform{ border:1px dashed var(--line-stitch); border-radius:8px; padding:12px; margin-bottom:10px; position:relative; }
+  .subform__remove{ position:absolute; top:8px; right:8px; }
 
   .modal-backdrop{
     position:fixed; inset:0; background:#000000AA; display:none;
-    align-items:center; justify-content:center; z-index:40;
+    align-items:flex-start; justify-content:center; z-index:40; overflow-y:auto; padding:40px 16px;
   }
   .modal-backdrop[data-open="true"]{ display:flex; }
   .modal{
-    width:420px; max-width:92vw; background:var(--surface);
+    width:460px; max-width:92vw; background:var(--surface);
     border:1px solid var(--line); border-radius:10px; padding:22px;
+    margin:auto;
   }
-  .modal__title{ font-family:var(--font-display); font-size:15px; margin:0 0 16px; }
+  .modal--wide{ width:640px; }
+  .modal__title{ font-family:var(--font-display); font-size:15px; margin:0 0 4px; }
+  .modal__subtitle{ font-size:12px; color:var(--text-faint); margin:0 0 16px; }
   .modal__actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+  .modal__error{ color:var(--bad); font-size:12.5px; margin:-6px 0 12px; display:none; }
 
   .empty{
     border:1px dashed var(--line-stitch); border-radius:10px;
@@ -181,13 +208,27 @@
   }
   .empty__stamp{ font-family:var(--font-mono); font-size:11px; letter-spacing:.5px; color:var(--text-faint); text-transform:uppercase; margin-top:6px; display:block; }
 
+  .section-title{ font-family:var(--font-display); font-size:13px; font-weight:600; margin:22px 0 10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; }
+  .section-title:first-child{ margin-top:0; }
+
   .app--loading .view{ opacity:.4; pointer-events:none; }
+
+  .preview-box{ border:1px dashed var(--line-stitch); border-radius:8px; padding:14px; }
+  .preview-box__loading{ color:var(--text-faint); font-size:12.5px; }
+  .preview-kpis{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .preview-kpi{ background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:8px 12px; }
+  .preview-kpi__label{ font-size:10px; text-transform:uppercase; color:var(--text-faint); letter-spacing:.3px; }
+  .preview-kpi__value{ font-family:var(--font-mono); font-size:15px; margin-top:2px; }
+  .preview-list{ display:flex; flex-direction:column; gap:5px; font-size:12.5px; }
+  .preview-list__row{ display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-bottom:1px solid var(--line); }
+  .preview-list__row:last-child{ border-bottom:none; }
+  .preview-list__row[data-bad="true"] .preview-list__amt{ color:var(--bad); }
 
   @media (max-width: 820px){
     .app{ grid-template-columns:1fr; }
     .sidebar{ display:none; }
     .view{ padding:20px; }
-    .form-row{ grid-template-columns:1fr; }
+    .form-row, .form-row--3{ grid-template-columns:1fr; }
   }
 </style>
 
@@ -207,30 +248,17 @@
       </div>
 
       <nav class="nav" id="nav">
-        <button class="nav__item" data-module="dashboard" data-active="true">
-          <span class="nav__num">00</span> Resumen
-        </button>
-        <button class="nav__item" data-module="modelos">
-          <span class="nav__num">01</span> Modelos
-        </button>
-        <button class="nav__item" data-module="materiales">
-          <span class="nav__num">02</span> Materiales
-        </button>
-        <button class="nav__item" data-module="inventario">
-          <span class="nav__num">03</span> Inventario
-        </button>
-        <button class="nav__item" data-module="produccion">
-          <span class="nav__num">04</span> Producción
-        </button>
-        <button class="nav__item" data-module="compras">
-          <span class="nav__num">05</span> Compras
-        </button>
-        <button class="nav__item" data-module="reportes">
-          <span class="nav__num">06</span> Reportes
-        </button>
-        <button class="nav__item" data-module="usuarios">
-          <span class="nav__num">07</span> Usuarios
-        </button>
+        <button class="nav__item" data-module="dashboard"><span class="nav__num">00</span> Resumen</button>
+        <button class="nav__item" data-module="modelos"><span class="nav__num">01</span> Modelos</button>
+        <button class="nav__item" data-module="ficha"><span class="nav__num">02</span> Ficha técnica</button>
+        <button class="nav__item" data-module="materiales"><span class="nav__num">03</span> Materiales</button>
+        <button class="nav__item" data-module="inventario"><span class="nav__num">04</span> Inventario</button>
+        <button class="nav__item" data-module="produccion"><span class="nav__num">05</span> Producción</button>
+        <button class="nav__item" data-module="compras"><span class="nav__num">06</span> Compras</button>
+        <button class="nav__item" data-module="proveedores"><span class="nav__num">07</span> Proveedores</button>
+        <button class="nav__item" data-module="reportes"><span class="nav__num">08</span> Reportes</button>
+        <button class="nav__item" data-module="usuarios"><span class="nav__num">09</span> Usuarios</button>
+        <button class="nav__item" data-module="historial"><span class="nav__num">10</span> Historial</button>
       </nav>
 
       <div class="sidebar__foot">
@@ -238,7 +266,7 @@
           <span class="session__dot"></span>
           <div class="session__info">
             <span class="session__name" id="sessionName">Conectado</span>
-            <span class="session__role" id="sessionRole" style="cursor:pointer; text-decoration:underline;">Cambiar hoja de cálculo</span>
+            <span class="session__role" id="sessionRole">Cambiar hoja de cálculo</span>
           </div>
         </div>
       </div>
@@ -269,14 +297,17 @@
     <!-- ===== Main ===== -->
     <main class="main">
       <header class="topbar">
-        <h1 class="topbar__title" id="viewTitle">Resumen</h1>
+        <div>
+          <h1 class="topbar__title" id="viewTitle">Resumen</h1>
+          <div class="topbar__hint" id="viewHint"></div>
+        </div>
         <div class="topbar__actions" id="viewActions"></div>
       </header>
 
       <div class="toast" id="toast"></div>
 
       <section class="view" id="view">
-        <!-- el contenido de cada módulo se inyecta aquí desde js.html -->
+        <!-- el contenido de cada módulo se inyecta aquí -->
       </section>
     </main>
 
@@ -286,22 +317,17 @@
 (function () {
   'use strict';
 
-  /* ============ Comunicación con el backend (Apps Script vía fetch) ============ */
+  /* ============================================================
+   * Comunicación con el backend (Apps Script vía fetch)
+   * ============================================================ */
 
-  // URL de tu Web App de Apps Script. Ya viene puesta: nadie tiene que
-  // configurar nada al entrar. Si algún día despliegas una nueva versión
-  // con OTRA url, solo cámbiala aquí.
+  // URL de tu Web App de Apps Script. Si despliegas una nueva versión
+  // con otra URL, solo cámbiala aquí.
   const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycby0jNfvM1ICSzoyBpcNy-yFl4SIo-qp2Nh06fMgr0401osOJpIr9fq99ki8QZOKz7ND/exec';
-
   const API_URL_KEY = 'tutokeya_api_url';
 
-  function getApiUrl() {
-    return localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL;
-  }
-
-  function setApiUrl(url) {
-    localStorage.setItem(API_URL_KEY, url.trim());
-  }
+  function getApiUrl() { return localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL; }
+  function setApiUrl(url) { localStorage.setItem(API_URL_KEY, url.trim()); }
 
   function api(action, payload) {
     const url = getApiUrl();
@@ -320,12 +346,15 @@
       .then(res => res && res.ok ? res.data : Promise.reject(new Error(res ? res.error : 'Sin respuesta del servidor')))
       .catch(err => {
         if (err instanceof TypeError) {
-          // fetch falla por red/CORS/URL incorrecta, no por lógica del backend
           throw new Error('No se pudo conectar con la Web App. Verifica que la URL sea correcta y que el deployment tenga acceso "Cualquier usuario".');
         }
         throw err;
       });
   }
+
+  /* ============================================================
+   * Helpers generales
+   * ============================================================ */
 
   function toast(msg, type) {
     const el = document.getElementById('toast');
@@ -333,7 +362,7 @@
     el.setAttribute('data-type', type || 'ok');
     el.setAttribute('data-show', 'true');
     clearTimeout(toast._t);
-    toast._t = setTimeout(() => el.setAttribute('data-show', 'false'), 3400);
+    toast._t = setTimeout(() => el.setAttribute('data-show', 'false'), 3600);
   }
 
   function esc(str) {
@@ -342,32 +371,85 @@
   }
 
   function fmtDate(v) { return v ? new Date(v).toLocaleString() : '—'; }
+  function fmtNum(v) { const n = Number(v); return isNaN(n) ? esc(v) : (Math.round(n * 100) / 100).toLocaleString(); }
 
-  /* ============ Modal genérico ============ */
-  function openModal(title, bodyHtml, { onMount, onSave, saveLabel } = {}) {
+  function opciones(list, valueKey, labelKey, selected) {
+    return list.map(item => `<option value="${esc(item[valueKey])}" ${String(item[valueKey]) === String(selected) ? 'selected' : ''}>${esc(item[labelKey])}</option>`).join('');
+  }
+
+  function badge(estado, label) {
+    const tone = estado === 'Activo' || estado === 'Recibida' || estado === 'Completada' ? 'ok'
+      : (estado === 'Cancelada' ? 'bad' : 'off');
+    return `<span class="badge" data-tone="${tone}">${esc(label || estado)}</span>`;
+  }
+
+  function tabla(headers, filas, vacioMsg, ids) {
+    if (filas.length === 0) return `<div class="empty">${esc(vacioMsg)}<span class="empty__stamp">Nada por aquí todavía</span></div>`;
+    return `<div class="card" style="padding:0; overflow:hidden;"><div class="table-wrap"><table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+      <tbody>${filas.map((f, i) => `<tr ${ids ? `data-clickable="true" data-row-id="${esc(ids[i])}"` : ''}>${f.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+  }
+
+  function debounce(fn, ms) {
+    let t;
+    return function (...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); };
+  }
+
+  /* ============================================================
+   * Modal genérico
+   * ============================================================ */
+
+  function openModal(title, bodyHtml, opts) {
+    opts = opts || {};
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop';
     backdrop.setAttribute('data-open', 'true');
     backdrop.innerHTML = `
-      <div class="modal">
+      <div class="modal ${opts.wide ? 'modal--wide' : ''}">
         <h3 class="modal__title">${esc(title)}</h3>
+        ${opts.subtitle ? `<p class="modal__subtitle">${esc(opts.subtitle)}</p>` : ''}
         <div class="modal__body">${bodyHtml}</div>
+        <p class="modal__error" data-error></p>
         <div class="modal__actions">
           <button class="btn btn--ghost" data-close>Cancelar</button>
-          <button class="btn btn--primary" data-save>${esc(saveLabel || 'Guardar')}</button>
+          <button class="btn btn--primary" data-save>${esc(opts.saveLabel || 'Guardar')}</button>
         </div>
       </div>`;
     document.body.appendChild(backdrop);
+    backdrop.addEventListener('mousedown', (e) => { if (e.target === backdrop) backdrop.remove(); });
     backdrop.querySelector('[data-close]').addEventListener('click', () => backdrop.remove());
-    if (onMount) onMount(backdrop);
-    if (onSave) backdrop.querySelector('[data-save]').addEventListener('click', () => onSave(backdrop));
+    if (opts.onMount) opts.onMount(backdrop);
+    if (opts.onSave) {
+      backdrop.querySelector('[data-save]').addEventListener('click', () => {
+        const errEl = backdrop.querySelector('[data-error]');
+        errEl.style.display = 'none';
+        const result = opts.onSave(backdrop);
+        if (result && result.catch) {
+          result.catch(e => { errEl.textContent = e.message; errEl.style.display = 'block'; });
+        }
+      });
+    }
     return backdrop;
   }
 
-  /* ============ Estado global ============ */
-  const state = { module: 'dashboard', cache: {} };
+  function confirmarYEjecutar(mensaje, accion, payload, exito) {
+    if (!confirm(mensaje)) return;
+    api(accion, payload).then(() => { toast(exito); goTo(state.module); }).catch(e => toast(e.message, 'error'));
+  }
 
-  /* ============ Configuración de la URL de la Web App ============ */
+  /* ============================================================
+   * Estado global + constantes espejo del backend
+   * ============================================================ */
+
+  const state = { module: 'dashboard', cache: {}, fichaModeloSel: null };
+
+  const TIPOS_MATERIAL = ['TELA', 'FORRO', 'MALLA', 'ESPUMA', 'CIERRE', 'ACCESORIO', 'ETIQUETA', 'LOGO', 'EMPAQUE', 'OTRO'];
+  const ESTADOS_ORDEN = ['Pendiente', 'En proceso', 'Completada', 'Cancelada'];
+  const ROLES = ['Admin', 'Produccion', 'Consulta'];
+
+  /* ============================================================
+   * Configuración de la URL de la Web App
+   * ============================================================ */
+
   function showConfigScreen(cancelable) {
     const screen = document.getElementById('configScreen');
     const input = document.getElementById('configUrlInput');
@@ -380,9 +462,7 @@
     setTimeout(() => input.focus(), 50);
   }
 
-  function hideConfigScreen() {
-    document.getElementById('configScreen').setAttribute('data-open', 'false');
-  }
+  function hideConfigScreen() { document.getElementById('configScreen').setAttribute('data-open', 'false'); }
 
   function testAndSaveApiUrl(url) {
     const errorEl = document.getElementById('configError');
@@ -400,26 +480,45 @@
       document.getElementById('sessionName').textContent = 'Conectado';
       goTo('dashboard');
     }).catch(err => {
+      document.getElementById('sessionBox').setAttribute('data-ok', 'false');
       document.getElementById('sessionName').textContent = 'Sin conexión';
       errorEl.textContent = 'No se pudo conectar: ' + err.message;
       errorEl.style.display = 'block';
     });
   }
 
-  document.getElementById('configSave').addEventListener('click', () => {
-    testAndSaveApiUrl(document.getElementById('configUrlInput').value);
-  });
+  document.getElementById('configSave').addEventListener('click', () => testAndSaveApiUrl(document.getElementById('configUrlInput').value));
   document.getElementById('configCancel').addEventListener('click', hideConfigScreen);
   document.getElementById('sessionRole').addEventListener('click', () => showConfigScreen(!!getApiUrl()));
 
-  /* ============ Router ============ */
-  const MODULE_TITLES = { dashboard:'Resumen', modelos:'Modelos', materiales:'Materiales', inventario:'Inventario', produccion:'Producción', compras:'Compras', reportes:'Reportes', usuarios:'Usuarios' };
-  const RENDERERS = { dashboard:renderDashboard, modelos:renderModelos, materiales:renderMateriales, inventario:renderInventario, produccion:renderProduccion, compras:renderCompras, reportes:renderReportes, usuarios:renderUsuarios };
+  /* ============================================================
+   * Router
+   * ============================================================ */
+
+  const MODULE_TITLES = {
+    dashboard: 'Resumen', modelos: 'Modelos', ficha: 'Ficha técnica', materiales: 'Materiales',
+    inventario: 'Inventario', produccion: 'Producción', compras: 'Compras', proveedores: 'Proveedores',
+    reportes: 'Reportes', usuarios: 'Usuarios', historial: 'Historial'
+  };
+  const MODULE_HINTS = {
+    dashboard: 'Vista general del sistema', modelos: 'Catálogo de modelos que se fabrican',
+    ficha: 'Qué materiales y cuánto consume cada modelo (BOM)', materiales: 'Insumos y colores disponibles',
+    inventario: 'Stock actual por material y color', produccion: 'Órdenes de producción y su consumo',
+    compras: 'Órdenes de compra a proveedores', proveedores: 'Contactos de proveedores',
+    reportes: 'Consultas agregadas de solo lectura', usuarios: 'Personas con acceso al sistema',
+    historial: 'Registro de auditoría de todo el sistema'
+  };
+  const RENDERERS = {
+    dashboard: renderDashboard, modelos: renderModelos, ficha: renderFichaTecnica, materiales: renderMateriales,
+    inventario: renderInventario, produccion: renderProduccion, compras: renderCompras, proveedores: renderProveedores,
+    reportes: renderReportes, usuarios: renderUsuarios, historial: renderHistorial
+  };
 
   function goTo(module) {
     state.module = module;
     document.querySelectorAll('.nav__item').forEach(el => el.setAttribute('data-current', el.dataset.module === module ? 'true' : 'false'));
     document.getElementById('viewTitle').textContent = MODULE_TITLES[module] || module;
+    document.getElementById('viewHint').textContent = MODULE_HINTS[module] || '';
     document.getElementById('viewActions').innerHTML = '';
     const view = document.getElementById('view');
     view.innerHTML = '<div class="empty">Cargando…</div>';
@@ -433,7 +532,10 @@
     view.innerHTML = `<div class="empty">Módulo no disponible.<span class="empty__stamp">Verifica tu rol</span></div>`;
   }
 
-  /* ============ Dashboard ============ */
+  /* ============================================================
+   * Dashboard
+   * ============================================================ */
+
   function renderDashboard(view) {
     return api('reportes.resumenGeneral').then(r => {
       view.innerHTML = `
@@ -441,158 +543,421 @@
           <div class="kpi"><div class="kpi__label">Modelos activos</div><div class="kpi__value">${r.totalModelos}</div></div>
           <div class="kpi"><div class="kpi__label">Materiales activos</div><div class="kpi__value">${r.totalMateriales}</div></div>
           <div class="kpi"><div class="kpi__label">Órdenes pendientes</div><div class="kpi__value">${r.ordenesPendientes}</div></div>
-          <div class="kpi"><div class="kpi__label">Materiales bajo stock</div><div class="kpi__value" style="color:${r.materialesBajoStock>0?'var(--bad)':'inherit'}">${r.materialesBajoStock}</div></div>
+          <div class="kpi"><div class="kpi__label">Materiales bajo stock</div><div class="kpi__value" style="color:${r.materialesBajoStock > 0 ? 'var(--bad)' : 'inherit'}">${r.materialesBajoStock}</div></div>
         </div>
         <div class="card">
-          <h3 class="card__title">Conexión</h3>
-          <p class="card__hint">Conectado a tu hoja de cálculo · acceso libre, sin usuario</p>
+          <h3 class="card__title">Accesos rápidos</h3>
+          <p class="card__hint">Ir directo a la tarea más común de cada módulo.</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn" data-go="produccion">+ Nueva orden de producción</button>
+            <button class="btn" data-go="modelos">+ Nuevo modelo</button>
+            <button class="btn" data-go="ficha">Editar ficha técnica</button>
+            <button class="btn" data-go="compras">+ Nueva compra</button>
+            <button class="btn" data-go="inventario">Ver inventario</button>
+          </div>
         </div>`;
+      view.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => goTo(b.dataset.go)));
     });
   }
 
-  /* ============ Usuarios ============ */
-  function renderUsuarios(view) {
-    document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnNuevo">+ Nuevo usuario</button>`;
-    return api('usuarios.listar').then(rows => {
-      view.innerHTML = tabla(['Nombre','Email','Rol','Estado','Último acceso',''], rows.map(u => [
-        esc(u.NOMBRE), `<span class="mono">${esc(u.EMAIL)}</span>`, esc(u.ROL),
-        badge(u.ESTADO), `<span class="mono">${fmtDate(u.ULTIMO_ACCESO)}</span>`,
-        `<button class="btn btn--ghost btn--danger" data-act="del" data-id="${u.ID_USUARIO}">Desactivar</button>`
-      ]), 'Todavía no hay usuarios registrados.');
+  /* ============================================================
+   * Modelos
+   * ============================================================ */
 
-      view.querySelectorAll('[data-act="del"]').forEach(b => b.addEventListener('click', () => {
-        if (!confirm('¿Desactivar este usuario?')) return;
-        api('usuarios.eliminar', { ID_USUARIO: b.dataset.id }).then(() => { toast('Usuario desactivado'); goTo('usuarios'); }).catch(e => toast(e.message, 'error'));
-      }));
-
-      document.getElementById('btnNuevo').addEventListener('click', () => openModal('Nuevo usuario', `
-        <div class="field"><label>Nombre</label><input id="mNombre"></div>
-        <div class="field"><label>Email</label><input id="mEmail" type="email"></div>
-        <div class="field"><label>Rol</label><select id="mRol"><option value="Admin">Admin</option><option value="Produccion">Producción</option><option value="Consulta">Consulta</option></select></div>
-      `, { onSave: (m) => api('usuarios.crear', {
-          NOMBRE: m.querySelector('#mNombre').value.trim(), EMAIL: m.querySelector('#mEmail').value.trim(), ROL: m.querySelector('#mRol').value
-        }).then(() => { toast('Usuario creado'); m.remove(); goTo('usuarios'); }).catch(e => toast(e.message, 'error')) }));
-    });
-  }
-
-  /* ============ Modelos ============ */
   function renderModelos(view) {
     document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnNuevo">+ Nuevo modelo</button>`;
     return api('modelos.listar').then(rows => {
       state.cache.modelos = rows;
-      view.innerHTML = tabla(['Código','Nombre','Categoría','Estado',''], rows.map(m => [
-        `<span class="mono">${esc(m.CODIGO)}</span>`, esc(m.NOMBRE), esc(m.CATEGORIA), badge(m.ESTADO),
-        `<button class="btn btn--ghost btn--danger" data-act="del" data-id="${m.ID_MODELO}">Desactivar</button>`
-      ]), 'Todavía no hay modelos. Crea el primero arriba a la derecha.');
+      const ids = rows.map(m => m.ID_MODELO);
+      view.innerHTML = tabla(['Código', 'Nombre', 'Categoría', 'Tiempo unit.', 'Estado', ''], rows.map(m => [
+        `<span class="mono">${esc(m.CODIGO)}</span>`, esc(m.NOMBRE), esc(m.CATEGORIA),
+        m.TIEMPO_PRODUCCION_UNITARIO ? esc(m.TIEMPO_PRODUCCION_UNITARIO) + ' min' : '—', badge(m.ESTADO),
+        `<div class="row-actions">
+           <button class="btn btn--ghost btn--sm" data-act="ficha" data-id="${m.ID_MODELO}">Ficha técnica</button>
+           <button class="btn btn--ghost btn--sm" data-act="edit" data-id="${m.ID_MODELO}">Editar</button>
+           <button class="btn btn--ghost btn--sm btn--danger" data-act="del" data-id="${m.ID_MODELO}">Desactivar</button>
+         </div>`
+      ]), 'Todavía no hay modelos. Crea el primero arriba a la derecha.', ids);
 
-      view.querySelectorAll('[data-act="del"]').forEach(b => b.addEventListener('click', () => {
-        if (!confirm('¿Desactivar este modelo?')) return;
-        api('modelos.eliminar', { ID_MODELO: b.dataset.id }).then(() => { toast('Modelo desactivado'); goTo('modelos'); }).catch(e => toast(e.message, 'error'));
+      view.querySelectorAll('[data-act="del"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        confirmarYEjecutar('¿Desactivar este modelo?', 'modelos.eliminar', { ID_MODELO: b.dataset.id }, 'Modelo desactivado');
+      }));
+      view.querySelectorAll('[data-act="ficha"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.fichaModeloSel = b.dataset.id;
+        goTo('ficha');
+      }));
+      view.querySelectorAll('[data-act="edit"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        abrirModalModelo(rows.find(m => m.ID_MODELO === b.dataset.id));
       }));
 
-      document.getElementById('btnNuevo').addEventListener('click', () => openModal('Nuevo modelo', `
-        <div class="field"><label>Código</label><input id="mCodigo"></div>
-        <div class="field"><label>Nombre</label><input id="mNombre"></div>
-        <div class="field"><label>Categoría</label><input id="mCategoria" placeholder="Mochila, Bolso..."></div>
-        <div class="field"><label>Descripción</label><input id="mDesc"></div>
-      `, { onSave: (m) => api('modelos.crear', {
-          CODIGO: m.querySelector('#mCodigo').value.trim(), NOMBRE: m.querySelector('#mNombre').value.trim(),
-          CATEGORIA: m.querySelector('#mCategoria').value.trim(), DESCRIPCION: m.querySelector('#mDesc').value.trim()
-        }).then(() => { toast('Modelo creado'); m.remove(); goTo('modelos'); }).catch(e => toast(e.message, 'error')) }));
+      document.getElementById('btnNuevo').addEventListener('click', () => abrirModalModelo(null));
     });
   }
 
-  /* ============ Materiales + Colores ============ */
+  function abrirModalModelo(modelo) {
+    const editando = !!modelo;
+    const body = `
+      <div class="form-row">
+        <div class="field"><label>Código</label><input id="mCodigo" value="${esc(modelo ? modelo.CODIGO : '')}" ${editando ? 'disabled' : ''}></div>
+        <div class="field"><label>Categoría</label><input id="mCategoria" placeholder="Mochila, Bolso..." value="${esc(modelo ? modelo.CATEGORIA : '')}"></div>
+      </div>
+      <div class="field"><label>Nombre</label><input id="mNombre" value="${esc(modelo ? modelo.NOMBRE : '')}"></div>
+      <div class="form-row">
+        <div class="field"><label>Tiempo de producción unitario (min)</label><input id="mTiempo" type="number" step="0.01" value="${esc(modelo ? modelo.TIEMPO_PRODUCCION_UNITARIO : '')}"></div>
+        <div class="field"><label>Imagen (URL)</label><input id="mImagen" value="${esc(modelo ? modelo.IMAGEN_URL : '')}"></div>
+      </div>
+      <div class="field"><label>Descripción</label><textarea id="mDesc" rows="2">${esc(modelo ? modelo.DESCRIPCION : '')}</textarea></div>
+      ${editando ? `<div class="field"><label>Estado</label><select id="mEstado">
+          <option value="Activo" ${modelo.ESTADO === 'Activo' ? 'selected' : ''}>Activo</option>
+          <option value="Inactivo" ${modelo.ESTADO === 'Inactivo' ? 'selected' : ''}>Inactivo</option>
+        </select></div>` : ''}`;
+
+    openModal(editando ? `Editar ${modelo.NOMBRE}` : 'Nuevo modelo', body, {
+      saveLabel: editando ? 'Guardar cambios' : 'Crear modelo',
+      onSave: (m) => {
+        const payload = {
+          NOMBRE: m.querySelector('#mNombre').value.trim(),
+          CATEGORIA: m.querySelector('#mCategoria').value.trim(),
+          TIEMPO_PRODUCCION_UNITARIO: m.querySelector('#mTiempo').value,
+          IMAGEN_URL: m.querySelector('#mImagen').value.trim(),
+          DESCRIPCION: m.querySelector('#mDesc').value.trim()
+        };
+        if (editando) {
+          payload.ID_MODELO = modelo.ID_MODELO;
+          payload.ESTADO = m.querySelector('#mEstado').value;
+          return api('modelos.editar', payload).then(() => { toast('Modelo actualizado'); m.remove(); goTo('modelos'); });
+        }
+        payload.CODIGO = m.querySelector('#mCodigo').value.trim();
+        return api('modelos.crear', payload).then(() => { toast('Modelo creado'); m.remove(); goTo('modelos'); });
+      }
+    });
+  }
+
+  /* ============================================================
+   * Ficha técnica (BOM / CONSUMO_MODELO)
+   * ============================================================ */
+
+  function renderFichaTecnica(view) {
+    document.getElementById('viewActions').innerHTML = '';
+    return Promise.all([api('modelos.listar'), api('materiales.listar'), api('colores.listar')]).then(([modelos, materiales, colores]) => {
+      state.cache.modelos = modelos; state.cache.materiales = materiales; state.cache.colores = colores;
+
+      if (modelos.length === 0) {
+        view.innerHTML = `<div class="empty">Necesitas crear un modelo primero.<span class="empty__stamp">Ve a Modelos</span></div>`;
+        return;
+      }
+
+      const idInicial = (state.fichaModeloSel && modelos.some(m => m.ID_MODELO === state.fichaModeloSel)) ? state.fichaModeloSel : modelos[0].ID_MODELO;
+
+      view.innerHTML = `
+        <div class="field" style="max-width:340px;">
+          <label>Modelo</label>
+          <select id="ftModelo">${opciones(modelos, 'ID_MODELO', 'NOMBRE', idInicial)}</select>
+        </div>
+        <div id="ftBody"></div>`;
+
+      const sel = document.getElementById('ftModelo');
+      sel.addEventListener('change', () => { state.fichaModeloSel = sel.value; cargarFicha(sel.value, materiales, colores); });
+      cargarFicha(idInicial, materiales, colores);
+    });
+  }
+
+  function cargarFicha(idModelo, materiales, colores) {
+    state.fichaModeloSel = idModelo;
+    const body = document.getElementById('ftBody');
+    body.innerHTML = '<div class="empty">Cargando ficha técnica…</div>';
+    return api('bom.listarPorModelo', { ID_MODELO: idModelo }).then(rows => {
+      document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnAddBom">+ Agregar material a la ficha</button>`;
+
+      const ids = rows.map(r => r.ID_CONSUMO);
+      body.innerHTML = tabla(['Material', 'Tipo', 'Depende color', 'Cantidad unitaria', 'Excepción de color', '% Desperdicio', 'Observaciones', ''], rows.map(r => [
+        esc(r.NOMBRE_MATERIAL), esc(r.TIPO_MATERIAL), r.DEPENDE_COLOR === 'SI' ? badge('Activo', 'Sí') : badge('Inactivo', 'No'),
+        `<span class="mono">${esc(r.CANTIDAD_UNITARIA)} ${esc(r.UNIDAD_MEDIDA)}</span>`,
+        r.ID_COLOR ? esc((colores.find(c => c.ID_COLOR === r.ID_COLOR) || {}).NOMBRE || r.ID_COLOR) : '<span class="mono" style="color:var(--text-faint)">todos los colores</span>',
+        r.PORCENTAJE_DESPERDICIO !== '' && r.PORCENTAJE_DESPERDICIO !== undefined ? esc(r.PORCENTAJE_DESPERDICIO) + '%' : '<span class="mono" style="color:var(--text-faint)">valor por defecto</span>',
+        esc(r.OBSERVACIONES || '—'),
+        `<div class="row-actions">
+           <button class="btn btn--ghost btn--sm" data-act="editBom" data-id="${r.ID_CONSUMO}">Editar</button>
+           <button class="btn btn--ghost btn--sm btn--danger" data-act="delBom" data-id="${r.ID_CONSUMO}">Quitar</button>
+         </div>`
+      ]), 'Este modelo todavía no tiene materiales en su ficha técnica.', ids);
+
+      body.querySelectorAll('[data-act="delBom"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!confirm('¿Quitar este material de la ficha técnica?')) return;
+        api('bom.eliminar', { ID_CONSUMO: b.dataset.id }).then(() => { toast('Material quitado de la ficha'); cargarFicha(idModelo, materiales, colores); }).catch(err => toast(err.message, 'error'));
+      }));
+      body.querySelectorAll('[data-act="editBom"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        abrirModalBom(idModelo, materiales, colores, rows.find(r => r.ID_CONSUMO === b.dataset.id));
+      }));
+
+      document.getElementById('btnAddBom').addEventListener('click', () => abrirModalBom(idModelo, materiales, colores, null));
+    }).catch(err => { body.innerHTML = `<div class="empty">${esc(err.message)}</div>`; });
+  }
+
+  function abrirModalBom(idModelo, materiales, colores, filaExistente) {
+    const editando = !!filaExistente;
+    const materialInicial = materiales.find(m => m.ID_MATERIAL === (filaExistente ? filaExistente.ID_MATERIAL : (materiales[0] || {}).ID_MATERIAL));
+
+    const body = `
+      <div class="field">
+        <label>Material</label>
+        <select id="bMaterial" ${editando ? 'disabled' : ''}>${opciones(materiales, 'ID_MATERIAL', 'NOMBRE', materialInicial ? materialInicial.ID_MATERIAL : '')}</select>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Cantidad unitaria</label><input id="bCantidad" type="number" step="0.0001" value="${esc(filaExistente ? filaExistente.CANTIDAD_UNITARIA : '')}"></div>
+        <div class="field"><label>% Desperdicio (vacío = usar el default)</label><input id="bDesperdicio" type="number" step="0.01" value="${filaExistente && filaExistente.PORCENTAJE_DESPERDICIO !== '' ? esc(filaExistente.PORCENTAJE_DESPERDICIO) : ''}"></div>
+      </div>
+      <div class="field" id="bColorField">
+        <label>Excepción de color (opcional — vacío aplica a todos)</label>
+        <select id="bColor"><option value="">— aplica a todos los colores —</option>${opciones(colores, 'ID_COLOR', 'NOMBRE', filaExistente ? filaExistente.ID_COLOR : '')}</select>
+        <div class="field__hint">Solo tiene efecto si el material depende del color.</div>
+      </div>
+      <div class="field"><label>Observaciones</label><input id="bObs" value="${esc(filaExistente ? filaExistente.OBSERVACIONES : '')}"></div>`;
+
+    const modal = openModal(editando ? 'Editar material de la ficha' : 'Agregar material a la ficha técnica', body, {
+      saveLabel: editando ? 'Guardar cambios' : 'Agregar',
+      onSave: (m) => {
+        const payload = {
+          ID_MODELO: idModelo,
+          ID_MATERIAL: m.querySelector('#bMaterial').value,
+          CANTIDAD_UNITARIA: m.querySelector('#bCantidad').value,
+          PORCENTAJE_DESPERDICIO: m.querySelector('#bDesperdicio').value,
+          ID_COLOR: m.querySelector('#bColor').value,
+          OBSERVACIONES: m.querySelector('#bObs').value.trim()
+        };
+        if (editando) {
+          payload.ID_CONSUMO = filaExistente.ID_CONSUMO;
+          delete payload.ID_MODELO;
+          return api('bom.editar', payload).then(() => { toast('Ficha técnica actualizada'); m.remove(); cargarFicha(idModelo, materiales, colores); });
+        }
+        return api('bom.agregar', payload).then(() => { toast('Material agregado a la ficha'); m.remove(); cargarFicha(idModelo, materiales, colores); });
+      }
+    });
+
+    function actualizarVisibilidadColor() {
+      const mat = materiales.find(mm => mm.ID_MATERIAL === modal.querySelector('#bMaterial').value);
+      const dependeColor = mat && mat.DEPENDE_COLOR === 'SI';
+      modal.querySelector('#bColorField').style.opacity = dependeColor ? '1' : '.45';
+    }
+    modal.querySelector('#bMaterial').addEventListener('change', actualizarVisibilidadColor);
+    actualizarVisibilidadColor();
+  }
+
+  /* ============================================================
+   * Materiales + Colores
+   * ============================================================ */
+
   function renderMateriales(view) {
     document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnNuevoMat">+ Nuevo material</button> <button class="btn" id="btnNuevoColor">+ Nuevo color</button>`;
-    return Promise.all([api('materiales.listar'), api('colores.listar')]).then(([materiales, colores]) => {
-      state.cache.materiales = materiales; state.cache.colores = colores;
+    return Promise.all([api('materiales.listar'), api('colores.listar'), api('proveedores.listar')]).then(([materiales, colores, proveedores]) => {
+      state.cache.materiales = materiales; state.cache.colores = colores; state.cache.proveedores = proveedores;
+
+      const idsMat = materiales.map(m => m.ID_MATERIAL);
+      const idsColor = colores.map(c => c.ID_COLOR);
+
       view.innerHTML = `
-        <div class="card" style="padding:0; overflow:hidden; margin-bottom:16px;">
-          ${tabla(['Código','Nombre','Unidad','Costo unit.','Stock mín.','Estado',''], materiales.map(m => [
-            `<span class="mono">${esc(m.CODIGO)}</span>`, esc(m.NOMBRE), esc(m.UNIDAD_MEDIDA), esc(m.COSTO_UNITARIO), esc(m.STOCK_MINIMO), badge(m.ESTADO),
-            `<button class="btn btn--ghost btn--danger" data-act="delMat" data-id="${m.ID_MATERIAL}">Desactivar</button>`
-          ]), 'No hay materiales todavía.', true)}
-        </div>
-        <div class="card__title" style="margin-top:8px;">Colores</div>
-        <div class="card" style="padding:0; overflow:hidden;">
-          ${tabla(['Nombre','Hex','Estado',''], colores.map(c => [
-            esc(c.NOMBRE), `<span class="mono">${esc(c.CODIGO_HEX)}</span>`, badge(c.ESTADO),
-            `<button class="btn btn--ghost btn--danger" data-act="delColor" data-id="${c.ID_COLOR}">Desactivar</button>`
-          ]), 'No hay colores todavía.', true)}
-        </div>`;
+        <div class="section-title">Materiales</div>
+        ${tabla(['Código', 'Nombre', 'Tipo', 'Depende color', 'Unidad', 'Costo unit.', 'Stock mín.', 'Estado', ''], materiales.map(m => [
+          `<span class="mono">${esc(m.CODIGO)}</span>`, esc(m.NOMBRE), esc(m.TIPO_MATERIAL),
+          m.DEPENDE_COLOR === 'SI' ? badge('Activo', 'Sí') : badge('Inactivo', 'No'),
+          esc(m.UNIDAD_MEDIDA), esc(m.COSTO_UNITARIO), esc(m.STOCK_MINIMO), badge(m.ESTADO),
+          `<div class="row-actions">
+             <button class="btn btn--ghost btn--sm" data-act="editMat" data-id="${m.ID_MATERIAL}">Editar</button>
+             <button class="btn btn--ghost btn--sm btn--danger" data-act="delMat" data-id="${m.ID_MATERIAL}">Desactivar</button>
+           </div>`
+        ]), 'No hay materiales todavía.', idsMat)}
 
-      view.querySelectorAll('[data-act="delMat"]').forEach(b => b.addEventListener('click', () => {
-        if (!confirm('¿Desactivar este material?')) return;
-        api('materiales.eliminar', { ID_MATERIAL: b.dataset.id }).then(() => { toast('Material desactivado'); goTo('materiales'); }).catch(e => toast(e.message, 'error'));
+        <div class="section-title">Colores</div>
+        ${tabla(['Nombre', 'Hex', 'Estado', ''], colores.map(c => [
+          esc(c.NOMBRE), `<span class="mono">${esc(c.CODIGO_HEX)}</span>`, badge(c.ESTADO),
+          `<div class="row-actions">
+             <button class="btn btn--ghost btn--sm" data-act="editColor" data-id="${c.ID_COLOR}">Editar</button>
+             <button class="btn btn--ghost btn--sm btn--danger" data-act="delColor" data-id="${c.ID_COLOR}">Desactivar</button>
+           </div>`
+        ]), 'No hay colores todavía.', idsColor)}`;
+
+      view.querySelectorAll('[data-act="delMat"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        confirmarYEjecutar('¿Desactivar este material?', 'materiales.eliminar', { ID_MATERIAL: b.dataset.id }, 'Material desactivado');
       }));
-      view.querySelectorAll('[data-act="delColor"]').forEach(b => b.addEventListener('click', () => {
-        if (!confirm('¿Desactivar este color?')) return;
-        api('colores.eliminar', { ID_COLOR: b.dataset.id }).then(() => { toast('Color desactivado'); goTo('materiales'); }).catch(e => toast(e.message, 'error'));
+      view.querySelectorAll('[data-act="editMat"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        abrirModalMaterial(materiales.find(m => m.ID_MATERIAL === b.dataset.id), proveedores);
+      }));
+      view.querySelectorAll('[data-act="delColor"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        confirmarYEjecutar('¿Desactivar este color?', 'colores.eliminar', { ID_COLOR: b.dataset.id }, 'Color desactivado');
+      }));
+      view.querySelectorAll('[data-act="editColor"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        abrirModalColor(colores.find(c => c.ID_COLOR === b.dataset.id));
       }));
 
-      document.getElementById('btnNuevoMat').addEventListener('click', () => openModal('Nuevo material', `
-        <div class="field"><label>Código</label><input id="mCodigo"></div>
-        <div class="field"><label>Nombre</label><input id="mNombre"></div>
-        <div class="form-row">
-          <div class="field"><label>Unidad de medida</label><input id="mUnidad" placeholder="m, kg, unid."></div>
-          <div class="field"><label>Costo unitario</label><input id="mCosto" type="number" step="0.01"></div>
-        </div>
-        <div class="field"><label>Stock mínimo</label><input id="mStockMin" type="number" step="0.01"></div>
-      `, { onSave: (m) => api('materiales.crear', {
-          CODIGO: m.querySelector('#mCodigo').value.trim(), NOMBRE: m.querySelector('#mNombre').value.trim(),
-          UNIDAD_MEDIDA: m.querySelector('#mUnidad').value.trim(), COSTO_UNITARIO: m.querySelector('#mCosto').value,
-          STOCK_MINIMO: m.querySelector('#mStockMin').value
-        }).then(() => { toast('Material creado'); m.remove(); goTo('materiales'); }).catch(e => toast(e.message, 'error')) }));
-
-      document.getElementById('btnNuevoColor').addEventListener('click', () => openModal('Nuevo color', `
-        <div class="field"><label>Nombre</label><input id="cNombre"></div>
-        <div class="field"><label>Código hex</label><input id="cHex" placeholder="#RRGGBB"></div>
-      `, { onSave: (m) => api('colores.crear', {
-          NOMBRE: m.querySelector('#cNombre').value.trim(), CODIGO_HEX: m.querySelector('#cHex').value.trim()
-        }).then(() => { toast('Color creado'); m.remove(); goTo('materiales'); }).catch(e => toast(e.message, 'error')) }));
+      document.getElementById('btnNuevoMat').addEventListener('click', () => abrirModalMaterial(null, proveedores));
+      document.getElementById('btnNuevoColor').addEventListener('click', () => abrirModalColor(null));
     });
   }
 
-  /* ============ Inventario ============ */
+  function abrirModalMaterial(material, proveedores) {
+    const editando = !!material;
+    const body = `
+      <div class="form-row">
+        <div class="field"><label>Código</label><input id="mCodigo" value="${esc(material ? material.CODIGO : '')}" ${editando ? 'disabled' : ''}></div>
+        <div class="field"><label>Nombre</label><input id="mNombre" value="${esc(material ? material.NOMBRE : '')}"></div>
+      </div>
+      <div class="form-row--3">
+        <div class="field"><label>Tipo de material</label><select id="mTipo">${TIPOS_MATERIAL.map(t => `<option value="${t}" ${material && material.TIPO_MATERIAL === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div class="field"><label>¿Depende del color?</label><select id="mDependeColor">
+          <option value="NO" ${!material || material.DEPENDE_COLOR === 'NO' ? 'selected' : ''}>No</option>
+          <option value="SI" ${material && material.DEPENDE_COLOR === 'SI' ? 'selected' : ''}>Sí</option>
+        </select></div>
+        <div class="field"><label>Estado</label><select id="mEstado">
+          <option value="Activo" ${!material || material.ESTADO === 'Activo' ? 'selected' : ''}>Activo</option>
+          <option value="Inactivo" ${material && material.ESTADO === 'Inactivo' ? 'selected' : ''}>Inactivo</option>
+        </select></div>
+      </div>
+      <div class="form-row--3">
+        <div class="field"><label>Unidad de medida</label><input id="mUnidad" placeholder="m, kg, unid." value="${esc(material ? material.UNIDAD_MEDIDA : '')}"></div>
+        <div class="field"><label>Unidad de compra</label><input id="mUnidadCompra" placeholder="rollo, caja..." value="${esc(material ? material.UNIDAD_COMPRA : '')}"></div>
+        <div class="field"><label>Factor de conversión</label><input id="mFactor" type="number" step="0.0001" value="${esc(material ? material.FACTOR_CONVERSION : '1')}"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Costo unitario</label><input id="mCosto" type="number" step="0.01" value="${esc(material ? material.COSTO_UNITARIO : '')}"></div>
+        <div class="field"><label>Stock mínimo</label><input id="mStockMin" type="number" step="0.01" value="${esc(material ? material.STOCK_MINIMO : '')}"></div>
+      </div>
+      <div class="field"><label>Proveedor principal (opcional)</label><select id="mProveedor"><option value="">— sin asignar —</option>${opciones(proveedores, 'ID_PROVEEDOR', 'NOMBRE', material ? material.ID_PROVEEDOR_PRINCIPAL : '')}</select></div>`;
+
+    openModal(editando ? `Editar ${material.NOMBRE}` : 'Nuevo material', body, {
+      wide: true,
+      saveLabel: editando ? 'Guardar cambios' : 'Crear material',
+      onSave: (m) => {
+        const payload = {
+          NOMBRE: m.querySelector('#mNombre').value.trim(),
+          TIPO_MATERIAL: m.querySelector('#mTipo').value,
+          DEPENDE_COLOR: m.querySelector('#mDependeColor').value,
+          ESTADO: m.querySelector('#mEstado').value,
+          UNIDAD_MEDIDA: m.querySelector('#mUnidad').value.trim(),
+          UNIDAD_COMPRA: m.querySelector('#mUnidadCompra').value.trim(),
+          FACTOR_CONVERSION: m.querySelector('#mFactor').value,
+          COSTO_UNITARIO: m.querySelector('#mCosto').value,
+          STOCK_MINIMO: m.querySelector('#mStockMin').value,
+          ID_PROVEEDOR_PRINCIPAL: m.querySelector('#mProveedor').value
+        };
+        if (editando) {
+          payload.ID_MATERIAL = material.ID_MATERIAL;
+          return api('materiales.editar', payload).then(() => { toast('Material actualizado'); m.remove(); goTo('materiales'); });
+        }
+        payload.CODIGO = m.querySelector('#mCodigo').value.trim();
+        return api('materiales.crear', payload).then(() => { toast('Material creado'); m.remove(); goTo('materiales'); });
+      }
+    });
+  }
+
+  function abrirModalColor(color) {
+    const editando = !!color;
+    const body = `
+      <div class="field"><label>Nombre</label><input id="cNombre" value="${esc(color ? color.NOMBRE : '')}"></div>
+      <div class="field"><label>Código hex</label><input id="cHex" placeholder="#RRGGBB" value="${esc(color ? color.CODIGO_HEX : '')}"></div>
+      ${editando ? `<div class="field"><label>Estado</label><select id="cEstado">
+          <option value="Activo" ${color.ESTADO === 'Activo' ? 'selected' : ''}>Activo</option>
+          <option value="Inactivo" ${color.ESTADO === 'Inactivo' ? 'selected' : ''}>Inactivo</option>
+        </select></div>` : ''}`;
+
+    openModal(editando ? `Editar ${color.NOMBRE}` : 'Nuevo color', body, {
+      saveLabel: editando ? 'Guardar cambios' : 'Crear color',
+      onSave: (m) => {
+        const payload = { NOMBRE: m.querySelector('#cNombre').value.trim(), CODIGO_HEX: m.querySelector('#cHex').value.trim() };
+        if (editando) {
+          payload.ID_COLOR = color.ID_COLOR;
+          payload.ESTADO = m.querySelector('#cEstado').value;
+          return api('colores.editar', payload).then(() => { toast('Color actualizado'); m.remove(); goTo('materiales'); });
+        }
+        return api('colores.crear', payload).then(() => { toast('Color creado'); m.remove(); goTo('materiales'); });
+      }
+    });
+  }
+
+  /* ============================================================
+   * Inventario
+   * ============================================================ */
+
   function renderInventario(view) {
     document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnAjustar">Ajustar stock</button>`;
     return Promise.all([api('inventario.listar'), api('materiales.listar'), api('colores.listar')]).then(([inv, materiales, colores]) => {
       state.cache.materiales = materiales; state.cache.colores = colores;
-      view.innerHTML = tabla(['Material','Color','Stock actual','Stock mínimo','Ubicación',''], inv.map(i => [
+      const ids = inv.map(i => i.ID_INVENTARIO);
+      view.innerHTML = tabla(['Material', 'Color', 'Stock actual', 'Stock mínimo', 'Ubicación', ''], inv.map(i => [
         esc(i.NOMBRE_MATERIAL), esc(i.NOMBRE_COLOR || '—'),
         `<span class="mono" style="${i.BAJO_STOCK ? 'color:var(--bad)' : ''}">${esc(i.STOCK_ACTUAL)}</span>`,
         `<span class="mono">${esc(i.STOCK_MINIMO)}</span>`, esc(i.UBICACION),
-        i.BAJO_STOCK ? '<span class="badge" data-tone="off" style="border-color:var(--bad);color:var(--bad)">Bajo stock</span>' : ''
-      ]), 'Sin movimientos de inventario todavía.');
+        i.BAJO_STOCK ? badge('bad', 'Bajo stock') : ''
+      ]), 'Sin movimientos de inventario todavía.', ids);
 
-      document.getElementById('btnAjustar').addEventListener('click', () => openModal('Ajustar stock', `
-        <div class="field"><label>Material</label><select id="aMaterial">${materiales.map(m => `<option value="${m.ID_MATERIAL}">${esc(m.NOMBRE)}</option>`).join('')}</select></div>
-        <div class="field"><label>Color (opcional)</label><select id="aColor"><option value="">—</option>${colores.map(c => `<option value="${c.ID_COLOR}">${esc(c.NOMBRE)}</option>`).join('')}</select></div>
-        <div class="field"><label>Cantidad (negativo para restar)</label><input id="aCantidad" type="number" step="0.01"></div>
-        <div class="field"><label>Motivo</label><input id="aObs" placeholder="Conteo físico, merma..."></div>
-      `, { onSave: (m) => api('inventario.ajustar', {
-          ID_MATERIAL: m.querySelector('#aMaterial').value, ID_COLOR: m.querySelector('#aColor').value,
-          CANTIDAD: m.querySelector('#aCantidad').value, OBSERVACIONES: m.querySelector('#aObs').value
-        }).then(() => { toast('Stock ajustado'); m.remove(); goTo('inventario'); }).catch(e => toast(e.message, 'error')) }));
+      view.querySelectorAll('tbody tr[data-row-id]').forEach(row => row.addEventListener('click', () => {
+        const item = inv.find(i => i.ID_INVENTARIO === row.dataset.rowId);
+        if (item) verKardex(item, materiales, colores);
+      }));
+
+      document.getElementById('btnAjustar').addEventListener('click', () => abrirModalAjusteStock(materiales, colores));
     });
   }
 
-  /* ============ Producción ============ */
+  function abrirModalAjusteStock(materiales, colores) {
+    openModal('Ajustar stock', `
+      <div class="field"><label>Material</label><select id="aMaterial">${opciones(materiales, 'ID_MATERIAL', 'NOMBRE')}</select></div>
+      <div class="field"><label>Color (opcional)</label><select id="aColor"><option value="">—</option>${opciones(colores, 'ID_COLOR', 'NOMBRE')}</select></div>
+      <div class="field"><label>Cantidad (negativo para restar)</label><input id="aCantidad" type="number" step="0.01"></div>
+      <div class="field"><label>Motivo</label><input id="aObs" placeholder="Conteo físico, merma..."></div>`, {
+      onSave: (m) => api('inventario.ajustar', {
+        ID_MATERIAL: m.querySelector('#aMaterial').value, ID_COLOR: m.querySelector('#aColor').value,
+        CANTIDAD: m.querySelector('#aCantidad').value, OBSERVACIONES: m.querySelector('#aObs').value.trim()
+      }).then(() => { toast('Stock ajustado'); m.remove(); goTo('inventario'); })
+    });
+  }
+
+  function verKardex(item, materiales, colores) {
+    openModal(`Kardex — ${item.NOMBRE_MATERIAL}${item.NOMBRE_COLOR ? ' / ' + item.NOMBRE_COLOR : ''}`,
+      '<div id="kardexBody" class="empty">Cargando…</div>', { wide: true, saveLabel: 'Cerrar' })
+      .querySelector('[data-save]').textContent = 'Cerrar';
+
+    api('inventario.kardex', { ID_MATERIAL: item.ID_MATERIAL, ID_COLOR: item.ID_COLOR }).then(mov => {
+      const body = document.getElementById('kardexBody');
+      if (!body) return;
+      if (mov.length === 0) { body.innerHTML = '<div class="empty">Sin movimientos todavía.</div>'; return; }
+      body.outerHTML = tabla(['Fecha', 'Tipo', 'Cantidad', 'Saldo', 'Origen', 'Obs.'].map(esc), mov.map(mv => [
+        `<span class="mono">${fmtDate(mv.FECHA)}</span>`, mv.TIPO_MOVIMIENTO === 'Entrada' ? badge('Activo', 'Entrada') : badge('bad', 'Salida'),
+        fmtNum(mv.CANTIDAD), fmtNum(mv.SALDO_RESULTANTE), esc(mv.ORIGEN), esc(mv.OBSERVACIONES || '—')
+      ]), 'Sin movimientos.');
+    }).catch(e => toast(e.message, 'error'));
+  }
+
+  /* ============================================================
+   * Producción
+   * ============================================================ */
+
   function renderProduccion(view) {
     document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnNueva">+ Nueva orden</button>`;
     return Promise.all([api('produccion.listar'), api('modelos.listar'), api('colores.listar')]).then(([ordenes, modelos, colores]) => {
       state.cache.modelos = modelos; state.cache.colores = colores;
-      view.innerHTML = tabla(['Código','Modelo','Cantidad','Entrega','Estado',''], ordenes.map(o => [
+      view.innerHTML = tabla(['Código', 'Modelo', 'Cantidad', 'Entrega', 'Estado', ''], ordenes.map(o => [
         `<span class="mono">${esc(o.CODIGO_ORDEN)}</span>`, esc(o.NOMBRE_MODELO), esc(o.CANTIDAD_TOTAL),
         esc(o.FECHA_ENTREGA_ESTIMADA || '—'), estadoSelect(o),
-        `<button class="btn btn--ghost" data-act="pdf" data-id="${o.ID_ORDEN}">PDF</button>`
+        `<div class="row-actions">
+           <button class="btn btn--ghost btn--sm" data-act="ver" data-id="${o.ID_ORDEN}">Ver</button>
+           <button class="btn btn--ghost btn--sm" data-act="pdf" data-id="${o.ID_ORDEN}">PDF</button>
+         </div>`
       ]), 'Todavía no hay órdenes de producción.');
 
       view.querySelectorAll('[data-act="pdf"]').forEach(b => b.addEventListener('click', () => {
         toast('Generando PDF…');
         api('pdf.generarOrdenPdf', { ID_ORDEN: b.dataset.id }).then(r => window.open(r.url, '_blank')).catch(e => toast(e.message, 'error'));
       }));
+      view.querySelectorAll('[data-act="ver"]').forEach(b => b.addEventListener('click', () => verOrden(b.dataset.id, colores)));
       view.querySelectorAll('[data-act="estado"]').forEach(sel => sel.addEventListener('change', () => {
         api('produccion.cambiarEstado', { ID_ORDEN: sel.dataset.id, ESTADO: sel.value }).then(() => toast('Estado actualizado')).catch(e => toast(e.message, 'error'));
       }));
@@ -602,29 +967,58 @@
   }
 
   function estadoSelect(o) {
-    const estados = ['Pendiente','En proceso','Completada','Cancelada'];
-    return `<select data-act="estado" data-id="${o.ID_ORDEN}">${estados.map(e => `<option value="${e}" ${e===o.ESTADO?'selected':''}>${e}</option>`).join('')}</select>`;
+    return `<select data-act="estado" data-id="${o.ID_ORDEN}">${ESTADOS_ORDEN.map(e => `<option value="${e}" ${e === o.ESTADO ? 'selected' : ''}>${e}</option>`).join('')}</select>`;
+  }
+
+  function verOrden(idOrden, colores) {
+    openModal('Detalle de orden', '<div class="empty">Cargando…</div>', { wide: true, saveLabel: 'Cerrar' });
+    api('produccion.obtener', { ID_ORDEN: idOrden }).then(orden => {
+      const backdrop = document.querySelector('.modal-backdrop[data-open="true"]');
+      if (!backdrop) return;
+      backdrop.querySelector('.modal__title').textContent = `Orden ${orden.CODIGO_ORDEN}`;
+      backdrop.querySelector('.modal__body').innerHTML = `
+        <div class="preview-kpis">
+          <div class="preview-kpi"><div class="preview-kpi__label">Cantidad total</div><div class="preview-kpi__value">${fmtNum(orden.CANTIDAD_TOTAL)}</div></div>
+          <div class="preview-kpi"><div class="preview-kpi__label">Costo estimado</div><div class="preview-kpi__value">${fmtNum(orden.COSTO_TOTAL_ESTIMADO)}</div></div>
+          <div class="preview-kpi"><div class="preview-kpi__label">Estado</div><div class="preview-kpi__value">${esc(orden.ESTADO)}</div></div>
+        </div>
+        <div class="section-title">Colores</div>
+        <div class="preview-list">${orden.detalle.map(d => `<div class="preview-list__row"><span>${esc((colores.find(c => c.ID_COLOR === d.ID_COLOR) || {}).NOMBRE || d.ID_COLOR)}</span><span class="preview-list__amt mono">${fmtNum(d.CANTIDAD)}</span></div>`).join('') || '<div class="empty">Sin detalle.</div>'}</div>
+        <div class="section-title">Consumo de materiales (histórico congelado)</div>
+        <div class="preview-list">${orden.consumo.map(c => `<div class="preview-list__row"><span>${esc(c.NOMBRE_MATERIAL)}</span><span class="preview-list__amt mono">${fmtNum(c.CANTIDAD_TOTAL)} ${esc(c.UNIDAD_MEDIDA)}</span></div>`).join('') || '<div class="empty">Sin consumo registrado.</div>'}</div>`;
+      const saveBtn = backdrop.querySelector('[data-save]');
+      saveBtn.textContent = 'Cerrar';
+      saveBtn.onclick = () => backdrop.remove();
+    }).catch(e => toast(e.message, 'error'));
   }
 
   function abrirModalNuevaOrden(modelos, colores) {
     let filas = [{ ID_COLOR: colores[0] ? colores[0].ID_COLOR : '', CANTIDAD: '' }];
 
-    function bodyHtml() {
-      return `
-        <div class="field"><label>Modelo</label><select id="pModelo">${modelos.map(m => `<option value="${m.ID_MODELO}">${esc(m.NOMBRE)}</option>`).join('')}</select></div>
-        <div class="field"><label>Fecha entrega estimada</label><input id="pFecha" type="date"></div>
-        <div id="filasColor">
-          ${filas.map((f, i) => `
-            <div class="form-row" data-fila="${i}">
-              <div class="field"><label>Color</label><select data-f="color">${colores.map(c => `<option value="${c.ID_COLOR}" ${c.ID_COLOR===f.ID_COLOR?'selected':''}>${esc(c.NOMBRE)}</option>`).join('')}</select></div>
-              <div class="field"><label>Cantidad</label><input data-f="cantidad" type="number" value="${f.CANTIDAD}"></div>
-            </div>`).join('')}
-        </div>
-        <button class="btn btn--ghost" id="btnAddColor" type="button">+ Agregar color</button>
-        <div id="previewConsumo" style="margin-top:14px;"></div>`;
+    function filasHtml() {
+      return filas.map((f, i) => `
+        <div class="subform" data-fila="${i}">
+          ${filas.length > 1 ? `<button type="button" class="btn btn--ghost btn--sm subform__remove" data-remove="${i}">✕</button>` : ''}
+          <div class="form-row">
+            <div class="field"><label>Color</label><select data-f="color">${opciones(colores, 'ID_COLOR', 'NOMBRE', f.ID_COLOR)}</select></div>
+            <div class="field"><label>Cantidad</label><input data-f="cantidad" type="number" value="${esc(f.CANTIDAD)}"></div>
+          </div>
+        </div>`).join('');
     }
 
-    const modal = openModal('Nueva orden de producción', bodyHtml(), { saveLabel: 'Crear orden' });
+    function bodyHtml() {
+      return `
+        <div class="form-row">
+          <div class="field"><label>Modelo</label><select id="pModelo">${opciones(modelos, 'ID_MODELO', 'NOMBRE')}</select></div>
+          <div class="field"><label>Fecha entrega estimada</label><input id="pFecha" type="date"></div>
+        </div>
+        <div id="filasColor">${filasHtml()}</div>
+        <button class="btn btn--ghost" id="btnAddColor" type="button">+ Agregar color</button>
+        <div class="section-title">Vista previa</div>
+        <div id="previewConsumo" class="preview-box"><div class="preview-box__loading">Elige colores y cantidades para calcular el consumo.</div></div>`;
+    }
+
+    const modal = openModal('Nueva orden de producción', bodyHtml(), { wide: true, saveLabel: 'Crear orden' });
 
     function leerDetalle(m) {
       return Array.from(m.querySelectorAll('[data-fila]')).map(row => ({
@@ -633,15 +1027,57 @@
       })).filter(d => d.CANTIDAD > 0);
     }
 
-    function wire(m) {
-      m.querySelector('#btnAddColor').addEventListener('click', () => {
-        filas.push({ ID_COLOR: colores[0] ? colores[0].ID_COLOR : '', CANTIDAD: '' });
-        m.querySelector('.modal__body').innerHTML = bodyHtml();
-        wire(m);
-      });
-      m.querySelector('[data-save]') && null;
+    function renderPreview(r) {
+      const faltantesHtml = r.faltantes.length > 0
+        ? `<div class="section-title" style="color:var(--bad); margin-top:14px;">Faltantes</div>
+           <div class="preview-list">${r.faltantes.map(f => `<div class="preview-list__row" data-bad="true"><span>${esc(f.NOMBRE_MATERIAL)} — faltan ${fmtNum(f.FALTA)} ${esc(f.UNIDAD_MEDIDA)}</span><span class="preview-list__amt mono">Comprar ${fmtNum(f.CANTIDAD_A_COMPRAR)} ${esc(f.UNIDAD_COMPRA)} (${esc(f.NOMBRE_PROVEEDOR)})</span></div>`).join('')}</div>`
+        : `<p style="color:var(--good); font-size:12.5px; margin-top:10px;">✓ Hay stock suficiente para toda la orden.</p>`;
+
+      return `
+        <div class="preview-kpis">
+          <div class="preview-kpi"><div class="preview-kpi__label">Unidades</div><div class="preview-kpi__value">${fmtNum(r.CANTIDAD_TOTAL)}</div></div>
+          <div class="preview-kpi"><div class="preview-kpi__label">Costo estimado</div><div class="preview-kpi__value">${fmtNum(r.costoEstimadoTotal)}</div></div>
+          <div class="preview-kpi"><div class="preview-kpi__label">Tiempo estimado</div><div class="preview-kpi__value">${fmtNum(r.tiempoEstimadoTotal)} min</div></div>
+        </div>
+        <div class="preview-list">${r.consumoPorMaterial.map(c => `<div class="preview-list__row"><span>${esc(c.NOMBRE_MATERIAL)}</span><span class="preview-list__amt mono">${fmtNum(c.CANTIDAD_TOTAL)} ${esc(c.UNIDAD_MEDIDA)}</span></div>`).join('')}</div>
+        ${faltantesHtml}`;
     }
-    wire(modal);
+
+    const actualizarPreview = debounce((m) => {
+      const idModelo = m.querySelector('#pModelo').value;
+      const detalle = leerDetalle(m);
+      const previewEl = m.querySelector('#previewConsumo');
+      if (!idModelo || detalle.length === 0) {
+        previewEl.innerHTML = '<div class="preview-box__loading">Elige colores y cantidades para calcular el consumo.</div>';
+        return;
+      }
+      previewEl.innerHTML = '<div class="preview-box__loading">Calculando…</div>';
+      api('produccion.previsualizar', { ID_MODELO: idModelo, detalleColores: detalle })
+        .then(r => { previewEl.innerHTML = renderPreview(r); })
+        .catch(e => { previewEl.innerHTML = `<div class="preview-box__loading" style="color:var(--bad)">${esc(e.message)}</div>`; });
+    }, 450);
+
+    function wireInputs(m) {
+      m.querySelector('#pModelo').addEventListener('change', () => actualizarPreview(m));
+      m.querySelectorAll('[data-f="color"], [data-f="cantidad"]').forEach(el => {
+        el.addEventListener('change', () => actualizarPreview(m));
+        el.addEventListener('input', () => actualizarPreview(m));
+      });
+      m.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', () => {
+        filas.splice(Number(btn.dataset.remove), 1);
+        m.querySelector('#filasColor').innerHTML = filasHtml();
+        wireInputs(m);
+        actualizarPreview(m);
+      }));
+    }
+
+    modal.querySelector('#btnAddColor').addEventListener('click', () => {
+      filas.push({ ID_COLOR: colores[0] ? colores[0].ID_COLOR : '', CANTIDAD: '' });
+      modal.querySelector('#filasColor').innerHTML = filasHtml();
+      wireInputs(modal);
+    });
+    wireInputs(modal);
+    actualizarPreview(modal);
 
     modal.querySelector('[data-save]').addEventListener('click', () => {
       const idModelo = modal.querySelector('#pModelo').value;
@@ -650,17 +1086,14 @@
 
       api('produccion.crearOrden', { ID_MODELO: idModelo, detalleColores: detalle, FECHA_ENTREGA_ESTIMADA: modal.querySelector('#pFecha').value })
         .then(orden => { toast(`Orden ${orden.CODIGO_ORDEN} creada`); modal.remove(); goTo('produccion'); })
-        .catch(e => {
-          if (e.message.indexOf('Stock insuficiente') !== -1) {
-            toast(e.message, 'error');
-          } else {
-            toast(e.message, 'error');
-          }
-        });
+        .catch(e => toast(e.message, 'error'));
     });
   }
 
-  /* ============ Compras ============ */
+  /* ============================================================
+   * Compras
+   * ============================================================ */
+
   function renderCompras(view) {
     document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnNuevaCompra">+ Nueva compra</button>`;
     return Promise.all([api('compras.listar'), api('proveedores.listar'), api('materiales.listar'), api('compras.listaSugerida')]).then(([compras, proveedores, materiales, sugerida]) => {
@@ -668,48 +1101,77 @@
       if (sugerida.length > 0) {
         html += `<div class="card" style="border-color:var(--bad); margin-bottom:16px;">
           <h3 class="card__title" style="color:var(--bad)">Sugerencia de compra — ${sugerida.length} material(es) bajo stock</h3>
-          <p class="card__hint">${sugerida.map(s => `${esc(s.NOMBRE_MATERIAL)}${s.NOMBRE_COLOR ? ' ('+esc(s.NOMBRE_COLOR)+')' : ''}: ${s.STOCK_ACTUAL}/${s.STOCK_MINIMO}`).join(' · ')}</p>
+          <p class="card__hint">${sugerida.map(s => `${esc(s.NOMBRE_MATERIAL)}${s.NOMBRE_COLOR ? ' (' + esc(s.NOMBRE_COLOR) + ')' : ''}: ${fmtNum(s.STOCK_ACTUAL)}/${fmtNum(s.STOCK_MINIMO)}`).join(' · ')}</p>
         </div>`;
       }
-      html += tabla(['Código','Proveedor','Fecha','Total','Estado',''], compras.map(c => [
-        `<span class="mono">${esc(c.CODIGO_COMPRA)}</span>`, esc(c.NOMBRE_PROVEEDOR), fmtDate(c.FECHA_COMPRA), esc(c.TOTAL), badge(c.ESTADO === 'Recibida' ? 'Activo' : 'Inactivo', c.ESTADO),
-        c.ESTADO === 'Pendiente' ? `<button class="btn btn--ghost" data-act="recibir" data-id="${c.ID_COMPRA}">Recibir</button>` : ''
-      ]), 'Todavía no hay compras registradas.');
+      const ids = compras.map(c => c.ID_COMPRA);
+      html += tabla(['Código', 'Proveedor', 'Fecha', 'Total', 'Estado', ''], compras.map(c => [
+        `<span class="mono">${esc(c.CODIGO_COMPRA)}</span>`, esc(c.NOMBRE_PROVEEDOR), fmtDate(c.FECHA_COMPRA), fmtNum(c.TOTAL), badge(c.ESTADO),
+        c.ESTADO === 'Pendiente' ? `<button class="btn btn--ghost btn--sm" data-act="recibir" data-id="${c.ID_COMPRA}">Recibir</button>` : ''
+      ]), 'Todavía no hay compras registradas.', ids);
       view.innerHTML = html;
 
-      view.querySelectorAll('[data-act="recibir"]').forEach(b => b.addEventListener('click', () => {
-        if (!confirm('¿Marcar como recibida y actualizar inventario?')) return;
-        api('compras.recibir', { ID_COMPRA: b.dataset.id }).then(() => { toast('Compra recibida, inventario actualizado'); goTo('compras'); }).catch(e => toast(e.message, 'error'));
+      view.querySelectorAll('[data-act="recibir"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        confirmarYEjecutar('¿Marcar como recibida y actualizar inventario?', 'compras.recibir', { ID_COMPRA: b.dataset.id }, 'Compra recibida, inventario actualizado');
       }));
+      view.querySelectorAll('tbody tr[data-row-id]').forEach(row => row.addEventListener('click', () => verCompra(row.dataset.rowId)));
 
       document.getElementById('btnNuevaCompra').addEventListener('click', () => abrirModalNuevaCompra(proveedores, materiales));
     });
   }
 
+  function verCompra(idCompra) {
+    openModal('Detalle de compra', '<div class="empty">Cargando…</div>', { wide: true, saveLabel: 'Cerrar' });
+    api('compras.obtener', { ID_COMPRA: idCompra }).then(compra => {
+      const backdrop = document.querySelector('.modal-backdrop[data-open="true"]');
+      if (!backdrop) return;
+      backdrop.querySelector('.modal__title').textContent = `Compra ${compra.CODIGO_COMPRA}`;
+      backdrop.querySelector('.modal__body').innerHTML = `
+        <p class="card__hint">Proveedor: ${esc(compra.ID_PROVEEDOR)} · Estado: ${esc(compra.ESTADO)} · Total: ${fmtNum(compra.TOTAL)}</p>
+        <div class="preview-list">${compra.detalle.map(d => `<div class="preview-list__row"><span>${esc(d.ID_MATERIAL)}</span><span class="preview-list__amt mono">${fmtNum(d.CANTIDAD)} × ${fmtNum(d.COSTO_UNITARIO)} = ${fmtNum(d.SUBTOTAL)}</span></div>`).join('')}</div>`;
+      const saveBtn = backdrop.querySelector('[data-save]');
+      saveBtn.textContent = 'Cerrar';
+      saveBtn.onclick = () => backdrop.remove();
+    }).catch(e => toast(e.message, 'error'));
+  }
+
   function abrirModalNuevaCompra(proveedores, materiales) {
     let filas = [{ ID_MATERIAL: materiales[0] ? materiales[0].ID_MATERIAL : '', CANTIDAD: '', COSTO_UNITARIO: '' }];
 
-    function bodyHtml() {
-      return `
-        <div class="field"><label>Proveedor</label><select id="cProveedor">${proveedores.map(p => `<option value="${p.ID_PROVEEDOR}">${esc(p.NOMBRE)}</option>`).join('')}</select></div>
-        <div id="filasMat">
-          ${filas.map((f, i) => `
-            <div class="form-row" data-fila="${i}">
-              <div class="field"><label>Material</label><select data-f="mat">${materiales.map(m => `<option value="${m.ID_MATERIAL}" ${m.ID_MATERIAL===f.ID_MATERIAL?'selected':''}>${esc(m.NOMBRE)}</option>`).join('')}</select></div>
-              <div class="field"><label>Cantidad</label><input data-f="cant" type="number" value="${f.CANTIDAD}"></div>
-              <div class="field"><label>Costo unit.</label><input data-f="costo" type="number" step="0.01" value="${f.COSTO_UNITARIO}"></div>
-            </div>`).join('')}
-        </div>
-        <button class="btn btn--ghost" id="btnAddMat" type="button">+ Agregar material</button>`;
+    function filasHtml() {
+      return filas.map((f, i) => `
+        <div class="subform" data-fila="${i}">
+          ${filas.length > 1 ? `<button type="button" class="btn btn--ghost btn--sm subform__remove" data-remove="${i}">✕</button>` : ''}
+          <div class="form-row--3">
+            <div class="field"><label>Material</label><select data-f="mat">${opciones(materiales, 'ID_MATERIAL', 'NOMBRE', f.ID_MATERIAL)}</select></div>
+            <div class="field"><label>Cantidad</label><input data-f="cant" type="number" value="${esc(f.CANTIDAD)}"></div>
+            <div class="field"><label>Costo unit.</label><input data-f="costo" type="number" step="0.01" value="${esc(f.COSTO_UNITARIO)}"></div>
+          </div>
+        </div>`).join('');
     }
 
-    const modal = openModal('Nueva compra', bodyHtml(), { saveLabel: 'Crear compra' });
+    function bodyHtml() {
+      return `
+        <div class="field"><label>Proveedor</label><select id="cProveedor">${opciones(proveedores, 'ID_PROVEEDOR', 'NOMBRE')}</select></div>
+        <div id="filasMat">${filasHtml()}</div>
+        <button class="btn btn--ghost" id="btnAddMat" type="button">+ Agregar material</button>
+        <div class="field" style="margin-top:14px;"><label>Observaciones</label><input id="cObs"></div>`;
+    }
+
+    const modal = openModal('Nueva compra', bodyHtml(), { wide: true, saveLabel: 'Crear compra' });
+
     function wire(m) {
       m.querySelector('#btnAddMat').addEventListener('click', () => {
         filas.push({ ID_MATERIAL: materiales[0] ? materiales[0].ID_MATERIAL : '', CANTIDAD: '', COSTO_UNITARIO: '' });
-        m.querySelector('.modal__body').innerHTML = bodyHtml();
+        m.querySelector('#filasMat').innerHTML = filasHtml();
         wire(m);
       });
+      m.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', () => {
+        filas.splice(Number(btn.dataset.remove), 1);
+        m.querySelector('#filasMat').innerHTML = filasHtml();
+        wire(m);
+      }));
     }
     wire(modal);
 
@@ -721,62 +1183,193 @@
       })).filter(d => d.CANTIDAD > 0 && d.COSTO_UNITARIO > 0);
 
       if (detalle.length === 0) { toast('Agrega al menos un material con cantidad y costo', 'error'); return; }
-      api('compras.crear', { ID_PROVEEDOR: modal.querySelector('#cProveedor').value, detalle: detalle })
+      api('compras.crear', { ID_PROVEEDOR: modal.querySelector('#cProveedor').value, detalle: detalle, OBSERVACIONES: modal.querySelector('#cObs').value.trim() })
         .then(c => { toast(`Compra ${c.CODIGO_COMPRA} creada`); modal.remove(); goTo('compras'); })
         .catch(e => toast(e.message, 'error'));
     });
   }
 
-  /* ============ Reportes ============ */
+  /* ============================================================
+   * Proveedores
+   * ============================================================ */
+
+  function renderProveedores(view) {
+    document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnNuevoProv">+ Nuevo proveedor</button>`;
+    return api('proveedores.listar').then(rows => {
+      state.cache.proveedores = rows;
+      const ids = rows.map(p => p.ID_PROVEEDOR);
+      view.innerHTML = tabla(['Nombre', 'Contacto', 'Teléfono', 'Email', 'Estado', ''], rows.map(p => [
+        esc(p.NOMBRE), esc(p.CONTACTO || '—'), esc(p.TELEFONO || '—'), esc(p.EMAIL || '—'), badge(p.ESTADO),
+        `<div class="row-actions">
+           <button class="btn btn--ghost btn--sm" data-act="edit" data-id="${p.ID_PROVEEDOR}">Editar</button>
+           <button class="btn btn--ghost btn--sm btn--danger" data-act="del" data-id="${p.ID_PROVEEDOR}">Desactivar</button>
+         </div>`
+      ]), 'Todavía no hay proveedores registrados.', ids);
+
+      view.querySelectorAll('[data-act="del"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        confirmarYEjecutar('¿Desactivar este proveedor?', 'proveedores.eliminar', { ID_PROVEEDOR: b.dataset.id }, 'Proveedor desactivado');
+      }));
+      view.querySelectorAll('[data-act="edit"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        abrirModalProveedor(rows.find(p => p.ID_PROVEEDOR === b.dataset.id));
+      }));
+
+      document.getElementById('btnNuevoProv').addEventListener('click', () => abrirModalProveedor(null));
+    });
+  }
+
+  function abrirModalProveedor(proveedor) {
+    const editando = !!proveedor;
+    const body = `
+      <div class="field"><label>Nombre</label><input id="pNombre" value="${esc(proveedor ? proveedor.NOMBRE : '')}"></div>
+      <div class="form-row">
+        <div class="field"><label>Contacto</label><input id="pContacto" value="${esc(proveedor ? proveedor.CONTACTO : '')}"></div>
+        <div class="field"><label>Teléfono</label><input id="pTelefono" value="${esc(proveedor ? proveedor.TELEFONO : '')}"></div>
+      </div>
+      <div class="field"><label>Email</label><input id="pEmail" type="email" value="${esc(proveedor ? proveedor.EMAIL : '')}"></div>
+      <div class="field"><label>Dirección</label><input id="pDireccion" value="${esc(proveedor ? proveedor.DIRECCION : '')}"></div>
+      ${editando ? `<div class="field"><label>Estado</label><select id="pEstado">
+          <option value="Activo" ${proveedor.ESTADO === 'Activo' ? 'selected' : ''}>Activo</option>
+          <option value="Inactivo" ${proveedor.ESTADO === 'Inactivo' ? 'selected' : ''}>Inactivo</option>
+        </select></div>` : ''}`;
+
+    openModal(editando ? `Editar ${proveedor.NOMBRE}` : 'Nuevo proveedor', body, {
+      saveLabel: editando ? 'Guardar cambios' : 'Crear proveedor',
+      onSave: (m) => {
+        const payload = {
+          NOMBRE: m.querySelector('#pNombre').value.trim(), CONTACTO: m.querySelector('#pContacto').value.trim(),
+          TELEFONO: m.querySelector('#pTelefono').value.trim(), EMAIL: m.querySelector('#pEmail').value.trim(),
+          DIRECCION: m.querySelector('#pDireccion').value.trim()
+        };
+        if (editando) {
+          payload.ID_PROVEEDOR = proveedor.ID_PROVEEDOR;
+          payload.ESTADO = m.querySelector('#pEstado').value;
+          return api('proveedores.editar', payload).then(() => { toast('Proveedor actualizado'); m.remove(); goTo('proveedores'); });
+        }
+        return api('proveedores.crear', payload).then(() => { toast('Proveedor creado'); m.remove(); goTo('proveedores'); });
+      }
+    });
+  }
+
+  /* ============================================================
+   * Reportes
+   * ============================================================ */
+
   function renderReportes(view) {
     document.getElementById('viewActions').innerHTML = '';
     return api('reportes.consumoPorModelo').then(rows => {
       view.innerHTML = `
         <div class="card">
           <h3 class="card__title">Costo por orden</h3>
-          <p class="card__hint">Ingresa el ID de una orden para ver su costo estimado de materiales.</p>
+          <p class="card__hint">Ingresa el ID de una orden para ver su costo estimado de materiales (histórico, congelado al crearla).</p>
           <div class="form-row">
             <div class="field"><label>ID de orden</label><input id="rIdOrden"></div>
           </div>
           <button class="btn btn--primary" id="btnCostear">Calcular</button>
           <div id="costoResultado" style="margin-top:14px;"></div>
         </div>
-        <div class="card__title" style="margin-top:20px;">Producción acumulada por modelo</div>
-        <div class="card" style="padding:0; overflow:hidden;">
-          ${tabla(['Modelo','Total unidades','Total órdenes'], rows.map(r => [esc(r.NOMBRE_MODELO), esc(r.TOTAL_UNIDADES), esc(r.TOTAL_ORDENES)]), 'Todavía no hay órdenes de producción.', true)}
-        </div>`;
+        <div class="section-title">Producción acumulada por modelo</div>
+        ${tabla(['Modelo', 'Total unidades', 'Total órdenes'], rows.map(r => [esc(r.NOMBRE_MODELO), fmtNum(r.TOTAL_UNIDADES), fmtNum(r.TOTAL_ORDENES)]), 'Todavía no hay órdenes de producción.')}`;
 
       document.getElementById('btnCostear').addEventListener('click', () => {
         const id = document.getElementById('rIdOrden').value.trim();
         if (!id) return;
         api('reportes.costoPorLote', { ID_ORDEN: id }).then(r => {
           document.getElementById('costoResultado').innerHTML = `
-            <div class="kpi" style="display:inline-block;"><div class="kpi__label">Costo total ${esc(r.CODIGO_ORDEN)}</div><div class="kpi__value">${r.COSTO_TOTAL}</div></div>`;
+            <div class="preview-kpis">
+              <div class="preview-kpi"><div class="preview-kpi__label">Costo total ${esc(r.CODIGO_ORDEN)}</div><div class="preview-kpi__value">${fmtNum(r.COSTO_TOTAL)}</div></div>
+            </div>
+            <div class="preview-list">${r.detalle.map(d => `<div class="preview-list__row"><span>${esc(d.NOMBRE_MATERIAL)}</span><span class="preview-list__amt mono">${fmtNum(d.SUBTOTAL)}</span></div>`).join('')}</div>`;
         }).catch(e => toast(e.message, 'error'));
       });
     });
   }
 
-  /* ============ Helpers de render ============ */
-  function badge(estado, label) {
-    return `<span class="badge" data-tone="${estado === 'Activo' ? 'ok' : 'off'}">${esc(label || estado)}</span>`;
+  /* ============================================================
+   * Usuarios
+   * ============================================================ */
+
+  function renderUsuarios(view) {
+    document.getElementById('viewActions').innerHTML = `<button class="btn btn--primary" id="btnNuevo">+ Nuevo usuario</button>`;
+    return api('usuarios.listar').then(rows => {
+      const ids = rows.map(u => u.ID_USUARIO);
+      view.innerHTML = tabla(['Nombre', 'Email', 'Rol', 'Estado', 'Último acceso', ''], rows.map(u => [
+        esc(u.NOMBRE), `<span class="mono">${esc(u.EMAIL)}</span>`, esc(u.ROL), badge(u.ESTADO),
+        `<span class="mono">${fmtDate(u.ULTIMO_ACCESO)}</span>`,
+        `<div class="row-actions">
+           <button class="btn btn--ghost btn--sm" data-act="edit" data-id="${u.ID_USUARIO}">Editar</button>
+           <button class="btn btn--ghost btn--sm btn--danger" data-act="del" data-id="${u.ID_USUARIO}">Desactivar</button>
+         </div>`
+      ]), 'Todavía no hay usuarios registrados.', ids);
+
+      view.querySelectorAll('[data-act="del"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        confirmarYEjecutar('¿Desactivar este usuario?', 'usuarios.eliminar', { ID_USUARIO: b.dataset.id }, 'Usuario desactivado');
+      }));
+      view.querySelectorAll('[data-act="edit"]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        abrirModalUsuario(rows.find(u => u.ID_USUARIO === b.dataset.id));
+      }));
+
+      document.getElementById('btnNuevo').addEventListener('click', () => abrirModalUsuario(null));
+    });
   }
 
-  function tabla(headers, filas, vacioMsg, compacto) {
-    if (filas.length === 0) return `<div class="empty">${esc(vacioMsg)}</div>`;
-    const wrap = compacto ? ['', ''] : ['<div class="card" style="padding:0; overflow:hidden;">', '</div>'];
-    return `${wrap[0]}<table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
-      <tbody>${filas.map(f => `<tr>${f.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>${wrap[1]}`;
+  function abrirModalUsuario(usuario) {
+    const editando = !!usuario;
+    const body = `
+      <div class="field"><label>Nombre</label><input id="uNombre" value="${esc(usuario ? usuario.NOMBRE : '')}"></div>
+      <div class="field"><label>Email</label><input id="uEmail" type="email" value="${esc(usuario ? usuario.EMAIL : '')}" ${editando ? 'disabled' : ''}></div>
+      <div class="form-row">
+        <div class="field"><label>Rol</label><select id="uRol">${ROLES.map(r => `<option value="${r}" ${usuario && usuario.ROL === r ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
+        ${editando ? `<div class="field"><label>Estado</label><select id="uEstado">
+            <option value="Activo" ${usuario.ESTADO === 'Activo' ? 'selected' : ''}>Activo</option>
+            <option value="Inactivo" ${usuario.ESTADO === 'Inactivo' ? 'selected' : ''}>Inactivo</option>
+          </select></div>` : ''}
+      </div>`;
+
+    openModal(editando ? `Editar ${usuario.NOMBRE}` : 'Nuevo usuario', body, {
+      saveLabel: editando ? 'Guardar cambios' : 'Crear usuario',
+      onSave: (m) => {
+        if (editando) {
+          return api('usuarios.editar', { ID_USUARIO: usuario.ID_USUARIO, NOMBRE: m.querySelector('#uNombre').value.trim(), ROL: m.querySelector('#uRol').value, ESTADO: m.querySelector('#uEstado').value })
+            .then(() => { toast('Usuario actualizado'); m.remove(); goTo('usuarios'); });
+        }
+        return api('usuarios.crear', { NOMBRE: m.querySelector('#uNombre').value.trim(), EMAIL: m.querySelector('#uEmail').value.trim(), ROL: m.querySelector('#uRol').value })
+          .then(() => { toast('Usuario creado'); m.remove(); goTo('usuarios'); });
+      }
+    });
   }
 
-  /* ============ Bootstrap ============ */
+  /* ============================================================
+   * Historial
+   * ============================================================ */
+
+  function renderHistorial(view) {
+    document.getElementById('viewActions').innerHTML = '';
+    return api('historial.listar').then(rows => {
+      const filas = rows.slice(0, 200);
+      view.innerHTML = tabla(['Fecha', 'Módulo', 'Acción', 'Entidad', 'Detalle'], filas.map(h => [
+        `<span class="mono">${fmtDate(h.FECHA)}</span>`, esc(h.MODULO), esc(h.ACCION), esc(h.ENTIDAD_AFECTADA),
+        `<span style="color:var(--text-muted)">${esc(h.DETALLE)}</span>`
+      ]), 'Todavía no hay actividad registrada.');
+      if (rows.length > 200) {
+        view.insertAdjacentHTML('beforeend', `<p class="card__hint" style="margin-top:10px;">Mostrando los 200 registros más recientes de ${rows.length}.</p>`);
+      }
+    });
+  }
+
+  /* ============================================================
+   * Bootstrap
+   * ============================================================ */
+
   document.querySelectorAll('.nav__item').forEach(item => item.addEventListener('click', () => goTo(item.dataset.module)));
 
   (function init() {
     const savedUrl = getApiUrl();
     document.getElementById('app').classList.remove('app--loading');
     if (!savedUrl) {
-      // Primera vez: pide la URL de la Web App antes de mostrar nada más
       showConfigScreen(false);
       return;
     }
