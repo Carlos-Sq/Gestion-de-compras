@@ -620,14 +620,34 @@
         <div id="previewConsumo" class="preview-box"><div class="preview-box__loading">Elige colores y cantidades para calcular el consumo.</div></div>`;
     }
 
-    const modal = openModal('Nueva orden de producción', bodyHtml(), { wide: true, saveLabel: 'Crear orden' });
-
     function leerDetalle(m) {
       return Array.from(m.querySelectorAll('[data-fila]')).map(row => ({
         COLOR: row.querySelector('[data-f="color"]').value.trim(),
         CANTIDAD: Number(row.querySelector('[data-f="cantidad"]').value || 0)
       })).filter(d => d.COLOR && d.CANTIDAD > 0);
     }
+
+    // FIX: onSave se pasa directamente a openModal (así el botón "Crear orden"
+    // se genera en .modal__actions Y queda conectado en un solo paso). Antes
+    // se llamaba openModal SIN onSave, así que el botón nunca se creaba, y el
+    // addEventListener manual de más abajo fallaba con
+    // "Cannot read properties of null (reading 'addEventListener')".
+    const modal = openModal('Nueva orden de producción', bodyHtml(), {
+      wide: true,
+      saveLabel: 'Crear orden',
+      onSave: (m) => {
+        const idModelo = m.querySelector('#pModelo').value;
+        const detalle = leerDetalle(m);
+        if (detalle.length === 0) { toast('Agrega al menos un color con cantidad', 'error'); return; }
+        return api('produccion.crearOrden', { ID_MODELO: idModelo, detalleColores: detalle })
+          .then(orden => {
+            toast(`Orden ${orden.CODIGO_ORDEN} creada`);
+            m.remove();
+            goTo('produccion'); // refresca la lista de fondo con la orden recién creada
+            mostrarConfirmacionOrden(orden, modelos);
+          });
+      }
+    });
 
     function renderPreview(r) {
       return `
@@ -673,20 +693,6 @@
     });
     wireInputs(modal);
     actualizarPreview(modal);
-
-    modal.querySelector('[data-save]').addEventListener('click', () => {
-      const idModelo = modal.querySelector('#pModelo').value;
-      const detalle = leerDetalle(modal);
-      if (detalle.length === 0) { toast('Agrega al menos un color con cantidad', 'error'); return; }
-      api('produccion.crearOrden', { ID_MODELO: idModelo, detalleColores: detalle })
-        .then(orden => {
-          toast(`Orden ${orden.CODIGO_ORDEN} creada`);
-          modal.remove();
-          goTo('produccion'); // refresca la lista de fondo con la orden recién creada
-          mostrarConfirmacionOrden(orden, modelos);
-        })
-        .catch(e => toast(e.message, 'error'));
-    });
   }
 
   /**
